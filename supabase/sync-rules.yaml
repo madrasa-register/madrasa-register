@@ -1,0 +1,107 @@
+# PowerSync sync rules for Maktab App. Paste into PowerSync dashboard → Sync Streams (sync config editor).
+bucket_definitions:
+  # head office admins: everything in their organization
+  org_admin:
+    parameters: SELECT organization_id AS org FROM app_member WHERE user_id = request.user_id() AND role = 'admin'
+    data:
+      - SELECT * FROM organization WHERE organization_id = bucket.org
+      - SELECT * FROM setting WHERE organization_id = bucket.org
+      - SELECT * FROM branch WHERE organization_id = bucket.org
+      - SELECT * FROM academic_year WHERE organization_id = bucket.org
+      - SELECT * FROM hijri_override WHERE organization_id = bucket.org
+      - SELECT * FROM app_user WHERE organization_id = bucket.org
+      - SELECT * FROM teacher WHERE organization_id = bucket.org
+      - SELECT * FROM class WHERE organization_id = bucket.org
+      - SELECT * FROM class_teacher WHERE organization_id = bucket.org
+      - SELECT * FROM family WHERE organization_id = bucket.org
+      - SELECT * FROM student WHERE organization_id = bucket.org
+      - SELECT * FROM enrollment WHERE organization_id = bucket.org
+      - SELECT * FROM monthly_class_record WHERE organization_id = bucket.org
+      - SELECT * FROM class_day WHERE organization_id = bucket.org
+      - SELECT * FROM student_attendance WHERE organization_id = bucket.org
+      - SELECT * FROM teacher_attendance WHERE organization_id = bucket.org
+      - SELECT * FROM alert WHERE organization_id = bucket.org
+      - SELECT * FROM eligibility_exception WHERE organization_id = bucket.org
+      - SELECT * FROM message_log WHERE organization_id = bucket.org
+      - SELECT * FROM mark_scheme WHERE organization_id = bucket.org
+      - SELECT * FROM exam WHERE organization_id = bucket.org
+      - SELECT * FROM exam_student WHERE organization_id = bucket.org
+      - SELECT * FROM score_entry WHERE organization_id = bucket.org
+      - SELECT * FROM deduction_event WHERE organization_id = bucket.org
+      - SELECT * FROM card_status WHERE organization_id = bucket.org
+      - SELECT * FROM fee_plan WHERE organization_id = bucket.org
+      - SELECT * FROM payment WHERE organization_id = bucket.org
+      - SELECT * FROM payment_allocation WHERE organization_id = bucket.org
+      - SELECT * FROM fund_entry WHERE organization_id = bucket.org
+      - SELECT * FROM activity_log WHERE organization_id = bucket.org
+      - SELECT * FROM audit_log WHERE organization_id = bucket.org
+  # everyone else: their branch
+  branch:
+    parameters: SELECT organization_id AS org, branch_id AS branch FROM app_member WHERE user_id = request.user_id() AND role != 'admin'
+    data:
+      - SELECT * FROM organization WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM setting WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM branch WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM academic_year WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM hijri_override WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM app_user WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM teacher WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM class WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM class_teacher WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM family WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM student WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM enrollment WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM monthly_class_record WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM class_day WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM student_attendance WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM teacher_attendance WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM alert WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM eligibility_exception WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM message_log WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM mark_scheme WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM exam WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM exam_student WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM score_entry WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM deduction_event WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM card_status WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM fee_plan WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM payment WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM payment_allocation WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM fund_entry WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM activity_log WHERE organization_id = bucket.org AND branch_id = bucket.branch
+      - SELECT * FROM audit_log WHERE organization_id = bucket.org AND branch_id = bucket.branch
+  # organization-wide rows (settings, years, schemes, Hijri overrides, organization)
+  org_shared:
+    parameters: SELECT organization_id AS org FROM app_member WHERE user_id = request.user_id() AND role != 'admin'
+    data:
+      - SELECT * FROM organization WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM setting WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM branch WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM academic_year WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM hijri_override WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM app_user WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM teacher WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM class WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM class_teacher WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM family WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM student WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM enrollment WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM monthly_class_record WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM class_day WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM student_attendance WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM teacher_attendance WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM alert WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM eligibility_exception WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM message_log WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM mark_scheme WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM exam WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM exam_student WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM score_entry WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM deduction_event WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM card_status WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM fee_plan WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM payment WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM payment_allocation WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM fund_entry WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM activity_log WHERE organization_id = bucket.org AND branch_id IS NULL
+      - SELECT * FROM audit_log WHERE organization_id = bucket.org AND branch_id IS NULL
