@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">مکتب ایپ</string>
+    <string name="title_activity_main">مکتب ایپ</string>
+    <string name="package_name">eu.hasnainin.maktab</string>
+    <string name="custom_url_scheme">eu.hasnainin.maktab</string>
+</resources>
