@@ -1,14 +1,15 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "eu.hasnainin.maktab"
+    namespace = "com.madrasaregister.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "eu.hasnainin.maktab"
+        applicationId "com.madrasaregister.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // CI passes the run number and package.json version so every build installs over the previous one
+        versionCode((System.getenv("VERSION_CODE") ?: "1") as Integer)
+        versionName(System.getenv("VERSION_NAME") ?: "1.0")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +17,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            // the permanent key: the same key must sign every version (and later the Play Store upload)
+            def ks = System.getenv("KEYSTORE_FILE")
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS") ?: "madrasa"
+                keyPassword System.getenv("KEYSTORE_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
