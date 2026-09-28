@@ -1,6 +1,6 @@
-# Maktab App — Phase 1
+# Madrasa Register (مدرسہ رجسٹر · سجل المدرسة)
 
-This app replaces the paper حاضری رجسٹر of مکتب تعلیم القرآن الکریم, following Master Specification v2. Phase 1 covers branches, classes, teachers, the student master index, and daily student and teacher attendance with the §6 rules and alerts.
+This app replaces the paper حاضری رجسٹر of a maktab or madrasa, following Master Specification v2. Phase 1 covers branches, classes, teachers, the student master index, and daily student and teacher attendance with the §6 rules and alerts.
 
 ## Stack
 
