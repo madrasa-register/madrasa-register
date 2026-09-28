@@ -119,3 +119,27 @@ describe('Hijri with moon-sighting overrides', () => {
     expect(sug.find((x) => x.key.startsWith('adha'))!.from).toBe('2024-06-17')
   })
 })
+
+describe('manual moves (mashwara)', () => {
+  it('swaps two days and keeps every count', async () => {
+    const { SAMPLES } = await import('./calendarSamples')
+    const s = SAMPLES.find((x) => x.label === '2025/26')!
+    const br = { weeklyHoliday: 0, practiceWeekday: 6 }
+    const base = generatePlan(s.config, br, { offset: 0, overrides: [] })
+    const moved = generatePlan({ ...s.config, moves: [{ from: '2025-05-06', to: '2025-05-07', reason: 'مشورہ' }] }, br, { offset: 0, overrides: [] })
+    expect(moved.byDate.get('2025-05-07')!.type).toBe('bazm')
+    expect(moved.byDate.get('2025-05-06')!.type).toBe(base.byDate.get('2025-05-07')!.type)
+    expect(moved.events.bazm[0]).toBe('2025-05-07')
+    expect(moved.totals).toEqual(base.totals)
+    expect(moved.events.annual).toEqual(base.events.annual)
+  })
+})
+
+describe('year opening from Shawwal', () => {
+  it('opens on 6 Shawwal as in the printed calendars', async () => {
+    const { startFromShawwal } = await import('./calendar')
+    const br = { weeklyHoliday: 0, practiceWeekday: 6 }
+    expect(startFromShawwal(1444, 6, br, '2023-04-20')).toBe('2023-04-26')
+    expect(startFromShawwal(1445, 6, br, '2024-04-10')).toBe('2024-04-15')
+  })
+})

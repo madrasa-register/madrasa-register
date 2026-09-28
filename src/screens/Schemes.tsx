@@ -28,9 +28,7 @@ export function SchemeList() {
         <h1>{tr('نمبروں کی اسکیم', 'Mark schemes', 'مخططات الدرجات')}</h1>
         <Link className="btn ghost" to="/exams">{tr('امتحانات', 'Exams', 'الامتحانات')}</Link>
       </div>
-      <p className="hint">{tr('کوئی نمبر کوڈ میں مقرر نہیں۔ مکتب کا 200 نمبر کا پرچہ صرف ابتدائی نمونہ ہے؛ کاپی بنا کر کوئی بھی کل نمبر (90، 200، 500، 800…) رکھ سکتے ہیں۔ تبدیلی سے نیا ورژن بنتا ہے، پچھلے امتحانات کے نمبر نہیں بدلتے۔',
-        'No mark is hard-coded. The maktab 200-mark paper is only the default; copy it to build any total (90, 200, 500, 800…). Editing creates a new version; marks already entered never change.',
-        'لا توجد درجة ثابتة في البرمجة. التعديل يُنشئ نسخة جديدة ولا يغيّر الدرجات السابقة.')}</p>
+      <p className="hint">{tr('ترمیم سے نیا ورژن بنتا ہے؛ پچھلے امتحانات کے نمبر نہیں بدلتے۔', 'Editing makes a new version; past marks never change.', 'التعديل ينشئ نسخة جديدة؛ لا تتغير درجات الامتحانات السابقة.')}</p>
       {active.map((r) => {
         const def = schemeDef(r)
         const old = rows!.filter((x) => x.lineage_id === r.lineage_id && x.id !== r.id)
@@ -165,7 +163,7 @@ export function SchemeEditor() {
               </div>
             ))}</div>
           )}
-          {c.method === 'recitation' && <p className="hint">{tr('قاعدہ: 3 × 18 + تعوذ 3 + تسمیہ 3 · ناظرہ: 2 × 22 + حفظ سورۃ 10 + 6 · حفظ: پاروں کے حساب سے 2 / 3 / 4 سوال (رجسٹر ص 55–57)', 'Qaida: 3 × 18 + 3 + 3 · Nazira: 2 × 22 + surah 10 + 6 · Hifz: 2 / 3 / 4 questions by paras (Reg. p. 55–57)', 'القاعدة 3×18+6 · النظرة 2×22+10+6 · الحفظ 2/3/4 أسئلة')}</p>}
+          {c.method === 'recitation' && <p className="hint">{tr('قاعدہ: 3 × 18 + تعوذ 3 + تسمیہ 3 · ناظرہ: 2 × 22 + حفظ سورۃ 10 + 6 · حفظ: پاروں کے حساب سے 2 / 3 / 4 سوال', 'Qaida: 3 × 18 + 3 + 3 · Nazira: 2 × 22 + surah 10 + 6 · Hifz: 2 / 3 / 4 questions by paras', 'القاعدة 3×18+6 · النظرة 2×22+10+6 · الحفظ 2/3/4 أسئلة')}</p>}
         </Card>
       ))}
       <div className="row wrap">

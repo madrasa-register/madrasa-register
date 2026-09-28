@@ -13,7 +13,7 @@
 // Only working days are counted: the weekly holiday and pinned holidays push
 // everything after them forward. پڑھائی on the practice weekday is shown as
 // پڑھائی + وضو / نماز کی عملی مشق.
-import { addDaysIso, toHijri, type HijriOverride } from './hijri'
+import { addDaysIso, toHijri, type HijriOverride , fromHijri} from './hijri'
 
 export type DayType =
   | 'before' | 'opening' | 'padhai' | 'practice' | 'dohrai_tarbiyati' | 'dohrai' | 'jaiza' | 'bazm' | 'musabqa'
@@ -22,6 +22,8 @@ export type DayType =
 export type ExamCfg = { prepDays: number; examDays: number; countWeeklyHoliday: boolean }
 export type Range = { from: string; to: string; reason: string }
 export type Pin = { date: string; type: 'parents' | 'fuzala' | 'event'; label?: string }
+/** A manual change agreed by mashwara: the two days swap what they hold (e.g. move a بزم to the next day). */
+export type Move = { from: string; to: string; reason: string }
 
 export type YearConfig = {
   start: string // افتتاح (first day after the Eid al-Fitr holidays)
@@ -36,6 +38,7 @@ export type YearConfig = {
   postExamHolidays: number
   ceremony: { days: number; countWeeklyHoliday: boolean }
   izala: { mode: 'untilEid' | 'fixed'; days: number }
+  moves?: Move[]
 }
 
 export const DEFAULT_YEAR: Omit<YearConfig, 'start' | 'eidFitr'> = {
@@ -156,11 +159,47 @@ export function generatePlan(cfg: YearConfig, branch: BranchCfg, hijri: { offset
     days.push({ date: d, type, cycle, label, hijri: h, ramadan: h.m === 9 })
     totals[type] = (totals[type] ?? 0) + 1
   }
+  // Manual moves: swap the content of two days, then rebuild totals and key dates from the days.
+  const byDate = new Map(days.map((x) => [x.date, x]))
+  const moves = cfg.moves ?? []
+  for (const m of moves) {
+    const a = byDate.get(m.from), b = byDate.get(m.to)
+    if (!a || !b) { warnings.push(`move-outside:${m.from}`); continue }
+    const base = (t: DayType) => (t === 'practice' ? 'padhai' : t)
+    const ta = base(a.type), tb = base(b.type)
+    ;[a.cycle, b.cycle] = [b.cycle, a.cycle]
+    ;[a.label, b.label] = [b.label, a.label]
+    a.type = tb; b.type = ta
+    for (const x of [a, b]) if (x.type === 'padhai' && weekday(x.date) === branch.practiceWeekday) x.type = 'practice'
+  }
+  if (moves.length) {
+    for (const k of Object.keys(totals)) delete totals[k]
+    for (const x of days) totals[x.type] = (totals[x.type] ?? 0) + 1
+    const of = (t: DayType) => days.filter((x) => x.type === t).map((x) => x.date)
+    const jz = new Map<number, string[]>()
+    for (const x of days) if (x.type === 'jaiza') jz.set(x.cycle ?? -1, [...(jz.get(x.cycle ?? -1) ?? []), x.date])
+    const firstC5 = days.find((x) => (x.cycle ?? 0) >= 5)?.date ?? '9999'
+    const exams = of('exam')
+    Object.assign(ev, {
+      jaiza: [...jz.entries()].sort((p, q) => p[0] - q[0]).map((e) => e[1]),
+      tarbiyati: of('dohrai_tarbiyati'), bazm: of('bazm'), musabqa: of('musabqa'),
+      parents: of('parents'), fuzala: of('fuzala'), ceremony: of('ceremony'), izala: of('izala'),
+      fiveMonthly: exams.filter((d) => d < firstC5), annual: exams.filter((d) => d >= firstC5),
+    })
+  }
   if (totals.unscheduled) warnings.push(`unscheduled:${totals.unscheduled}`)
-  return { days, byDate: new Map(days.map((x) => [x.date, x])), warnings, totals, events: ev }
+  return { days, byDate, warnings, totals, events: ev }
 }
 
 /** First working day after the Eid al-Fitr holidays — the suggested افتتاح date. */
+/** Opening day of the year whose Shawwal is in Hijri year `hy`: the given Shawwal day, moved past the weekly holiday. */
+export function startFromShawwal(hy: number, shawwalDay: number, branch: BranchCfg, near: string, offset = 0, overrides: any[] = []): string | null {
+  let d = fromHijri({ y: hy, m: 10, d: shawwalDay }, near, offset, overrides)
+  if (!d) return null
+  while (weekday(d) === branch.weeklyHoliday) d = addDaysIso(d, 1)
+  return d
+}
+
 export function suggestStart(eidEnd: string, branch: BranchCfg): string {
   let d = addDaysIso(eidEnd, 1)
   while (weekday(d) === branch.weeklyHoliday) d = addDaysIso(d, 1)

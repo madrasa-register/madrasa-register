@@ -4,7 +4,7 @@ import { myClasses, loadSettings, currentTeacherOf, studentPeriod } from '../db/
 import { examWindow } from '../db/examRepo'
 import { summarize } from '../engine/attendance'
 import { ageYM } from '../engine/attendance'
-import { tr, useQuery, Card, Empty, Num, Select, useDialog, fmtDate, label, PARTS, TRACKS } from '../ui'
+import { tr, useQuery, Card, Empty, Num, Select, useDialog, fmtDate, label, PARTS } from '../ui'
 import { gradeName, practicalName } from './Exams'
 import { pagesToPdf, savePdf } from '../pdf'
 
@@ -77,8 +77,6 @@ export function ResultCards() {
         <h1>{tr('نتیجۂ امتحان کارڈ', 'Result card', 'بطاقة النتيجة')}</h1>
         <Select value={classId} onChange={(v) => { setClassId(v); setStudentId(null) }} options={(classes ?? []).map((c) => ({ v: c.id, t: c.name }))} />
       </div>
-      <p className="hint">{tr('ہر طالب علم کا سال میں ایک کارڈ: پنج ماہی اور سالانہ نتیجہ۔ ماہانہ جائزے کا کارڈ نہیں بنتا۔ پوزیشن کارڈ پر نہیں چھپتی۔ سرپرست خود آ کر کارڈ لے؛ پنج ماہی کے بعد دستخط شدہ کارڈ واپس آئے، سالانہ کے بعد سرپرست کے پاس رہے۔',
-        'One card per student per year: five-monthly and annual results. No card for monthly reviews. Position is not printed. The guardian collects it in person; after the five-monthly exam the signed card comes back, after the annual exam the guardian keeps it.', 'بطاقة واحدة لكل طالب في السنة.')}</p>
       {data && (
         <div className="table-wrap"><table className="tbl">
           <thead><tr><th>#</th><th>{tr('نام', 'Name')}</th><th>{tr('پنج ماہی: سرپرست کو دیا', 'Five-monthly: handed to guardian', 'سُلّمت (نصف العام)')}</th><th>{tr('دستخط شدہ واپس', 'Signed card returned', 'أُعيدت موقّعة')}</th><th>{tr('سالانہ: سرپرست کو دیا', 'Annual: handed to guardian', 'سُلّمت (السنوي)')}</th><th /></tr></thead>
@@ -146,22 +144,20 @@ function CardPreview({ studentId, cls }: { studentId: string; cls: Row }) {
       <div className="cardscroll">
         <div ref={p1} className="rc-page" dir="rtl">
           <div className="rc-half rc-cover">
-            <div className="rc-logo">{org?.logo ? <img src={org.logo} alt="" /> : <span>۞</span>}</div>
-            <h2>{org?.name}</h2>
-            <div className="rc-title">نتیجۂ امتحان</div>
-            <dl className="rc-fields">
-              <dt>نام</dt><dd>{s.name}</dd>
-              <dt>ولدیت</dt><dd>{s.walidiyat}</dd>
-              <dt>معلم / معلمہ</dt><dd>{teacher?.name ?? ''}</dd>
-              <dt>مکتب</dt><dd>{branch?.name}</dd>
-              <dt>تربیتی نصاب حصہ</dt><dd>{label(PARTS, part)}</dd>
-              <dt>عمر</dt><dd><Num>{age ? `${age.years}` : ''}</Num> سال <Num>{age ? age.months : ''}</Num> ماہ</dd>
-            </dl>
+            <div className="rc-rays" />
+            <div className="rc-logo">{org?.logo ? <img src={org.logo} alt="" /> : <Emblem />}</div>
+            <div className="rc-orgname">{org?.name}</div>
+            <div className="rc-badge">نتیجۂ امتحان</div>
+            <div className="rc-info">
+              <div><span>طالب علم / طالبہ کا نام:</span><b>{s.name}</b><span>ولدیت:</span><b>{s.walidiyat}</b></div>
+              <div><span>معلم / معلمہ کا نام:</span><b>{teacher?.name ?? ''}</b><span>مکتب (مدرسہ) کا نام:</span><b>{branch?.name}</b></div>
+              <div><span>تربیتی نصاب حصہ:</span><b>{label(PARTS, part)}</b><span>عمر:</span><b><Num>{age ? `${age.years}` : ''}</Num>{age ? ' سال ' : ''}<Num>{age ? age.months : ''}</Num>{age ? ' ماہ' : ''}</b></div>
+            </div>
           </div>
           <div className="rc-half rc-back">
-            <h3>سرپرست کے لیے ہدایات</h3>
-            {instructions.length ? <ol>{instructions.slice(0, 6).map((x, i) => <li key={i}>{x}</li>)}</ol>
-              : <p className="rc-empty">{tr('کارڈ کی چھ ہدایات ترتیبات (card.instructions) میں درج کریں۔', 'Enter the six card instructions in Settings (card.instructions).', 'أدخل التعليمات الست في الإعدادات.')}</p>}
+            <div className="rc-badge wide">ہدایات برائے والد / سرپرست حضرات</div>
+            {instructions.length ? <ol className="rc-ins">{instructions.slice(0, 6).map((x, i) => <li key={i}><span className="rc-n"><Num>{i + 1}</Num></span><span>{x}</span></li>)}</ol>
+              : <p className="rc-empty">{tr('کارڈ کی چھ ہدایات ترتیبات میں درج کریں۔', 'Enter the six card instructions in Settings.', 'أدخل التعليمات الست في الإعدادات.')}</p>}
           </div>
         </div>
         <div ref={p2} className="rc-page" dir="rtl">
@@ -174,27 +170,56 @@ function CardPreview({ studentId, cls }: { studentId: string; cls: Row }) {
   )
 }
 
+function Emblem() {
+  // neutral emblem (open book) used when the organization has not added its own logo
+  return (
+    <svg viewBox="0 0 120 120" width="110" height="110" aria-hidden>
+      <circle cx="60" cy="60" r="54" fill="#0f6e66" />
+      <circle cx="60" cy="60" r="47" fill="none" stroke="#c9973b" strokeWidth="3" />
+      <path d="M30 44 Q45 36 60 44 Q75 36 90 44 V82 Q75 74 60 82 Q45 74 30 82 Z" fill="#fff" />
+      <path d="M60 44 V82" stroke="#0f6e66" strokeWidth="2.5" />
+      <path d="M72 40 V58 L76 54 L80 58 V38" fill="#c9973b" />
+    </svg>
+  )
+}
+
+const TRACK_COLS = [['nazira', 'ناظرہ'], ['hifz', 'حفظ'], ['sanawi', 'سیکنڈری']] as const
+const ROW_NAMES: Record<string, string[]> = {
+  nazira: ['نورانی قاعدہ / قرآن کریم', 'ایمانیات و عبادات', 'احادیث و مسنون دعائیں', 'سیرت و اخلاق و آداب', 'زبان (عربی، اردو)', 'نمازی ڈائری', 'طالب علم / طالبہ کی حاضری'],
+  hifz: ['قرآن کریم', 'تجوید و ایمانیات', 'عبادات', 'احادیث و مسنون دعائیں', 'سیرت و اخلاق و آداب', 'نمازی ڈائری', 'طالب علم / طالبہ کی حاضری'],
+  sanawi: ['قرآن کریم', 'ترجمہ و تفسیر', 'ایمانیات و عبادات', 'احادیث و مسنون دعائیں', 'معاشرت و معاملات', 'نمازی ڈائری', 'طالب علم / طالبہ کی حاضری'],
+}
+
 function ResultPanel({ title, p, part }: { title: string; p: Panel; part: string }) {
   const blank = !p.exam || !p.es
   const ibt = part === 'ibtidaiya'
   return (
     <div className="rc-half rc-panel">
       <div className="rc-ptitle">{title}</div>
-      <div className="rc-tracks">{TRACKS.map((t) => <span key={t.v}><span className="rc-box">{!blank && p.track === t.v ? '✓' : ''}</span>{t.v === 'sanawi' ? 'سیکنڈری' : t.ur}</span>)}</div>
       <table className="rc-table">
-        <thead><tr><th>مضامین</th><th>کل نمبر</th><th>حاصل کردہ</th></tr></thead>
+        <thead><tr>
+          <th className="rc-sn">نمبر<br />شمار</th>
+          {TRACK_COLS.map(([k, n]) => <th key={k}>{n} <span className="rc-box">{!blank && p.track === k ? '✓' : ''}</span></th>)}
+          <th className="rc-mx">کل<br />نمبرات</th><th className="rc-ob">حاصل کردہ<br />نمبرات</th>
+        </tr></thead>
         <tbody>
-          {p.rows.map((r, i) => <tr key={i}><td>{r.label}</td><td><Num>{r.na ? '—' : r.max}</Num></td><td><Num>{r.na ? 'لاگو نہیں' : blank || r.marks === null ? '' : r.marks}</Num></td></tr>)}
-          <tr className="rc-sum"><td>کل نمبرات</td><td><Num>{ibt ? 190 : 200}</Num></td><td><Num>{blank ? '' : p.total}</Num></td></tr>
+          {p.rows.map((r, i) => (
+            <tr key={i} className={p.track && !blank ? '' : ''}>
+              <td className="rc-sn"><Num>{i + 1}</Num></td>
+              {TRACK_COLS.map(([k]) => <td key={k} className={!blank && p.track === k ? 'rc-mine' : ''}>{ROW_NAMES[k][i]}</td>)}
+              <td className="rc-mx"><Num>{r.na ? '—' : r.max}</Num></td>
+              <td className="rc-ob"><Num>{r.na ? '—' : blank || r.marks === null ? '' : r.marks}</Num></td>
+            </tr>
+          ))}
+          <tr className="rc-sum"><td colSpan={4}>کل نمبرات</td><td className="rc-mx"><Num>{ibt ? 190 : 200}</Num></td><td className="rc-ob"><Num>{blank ? '' : p.total}</Num></td></tr>
         </tbody>
       </table>
-      <div className="rc-grid">
-        <span>تاریخِ امتحان: <Num>{blank ? '' : fmtDate(p.exam!.date)}</Num></span>
-        <span>درجۂ کامیابی: {blank ? '' : gradeName(p.es!.grade)}</span>
-        <span>عملی کیفیت: {['behtar', 'munasib', 'qabil-e-tawajjuh'].map((k) => <span key={k} className="rc-opt"><span className="rc-box">{!blank && p.es!.practical === k ? '✓' : ''}</span>{practicalName(k)}</span>)}</span>
-        <span>کل ایامِ تعلیم: <Num>{blank || !p.days ? '' : p.days.teaching}</Num> · حاضری: <Num>{blank || !p.days ? '' : p.days.present}</Num> · غیر حاضری: <Num>{blank || !p.days ? '' : p.days.absent}</Num></span>
+      <div className="rc-lines">
+        <div><span>تاریخِ امتحان:</span><b><Num>{blank ? '' : fmtDate(p.exam!.date)}</Num></b><span>درجۂ کامیابی:</span><b>{blank ? '' : gradeName(p.es!.grade)}</b></div>
+        <div><span>عملی کیفیت:</span>{['behtar', 'munasib', 'qabil-e-tawajjuh'].map((k) => <span key={k} className={`rc-chip ${!blank && p.es!.practical === k ? 'on' : ''}`}>{practicalName(k)}</span>)}</div>
+        <div><span>کل ایامِ تعلیم:</span><b><Num>{blank || !p.days ? '' : p.days.teaching}</Num></b><span>حاضری:</span><b><Num>{blank || !p.days ? '' : p.days.present}</Num></b><span>غیر حاضری:</span><b><Num>{blank || !p.days ? '' : p.days.absent}</Num></b></div>
       </div>
-      <div className="rc-sign"><span>دستخط معلم</span><span>دستخط مقامی ذمہ دار / ناظم</span><span>دستخط سرپرست</span></div>
+      <div className="rc-sign"><span>دستخط معلم / معلمہ</span><span>دستخط مقامی ذمہ دار / ناظم</span><span>دستخط سرپرست</span></div>
     </div>
   )
 }

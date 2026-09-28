@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { all, session, today, type Row } from '../db/db'
-import { planForYear, loadSampleYears, saveYearConfig, saveHijriOverride, loadHijriCtx } from '../db/calendarRepo'
-import { generatePlan, suggestStart, type Plan, type DayType, type YearConfig, type Range, type Pin, type ExamCfg } from '../engine/calendar'
-import { SAMPLES } from '../engine/calendarSamples'
-import { addDaysIso, diffDays, monthStarts, monthLengthIssues, suggestIslamicHolidays, toHijri } from '../engine/hijri'
+import { all, one, session, today, type Row } from '../db/db'
+import { loadSettings } from '../db/repo'
+import { planForYear, saveYearConfig, saveHijriOverride, loadHijriCtx } from '../db/calendarRepo'
+import { generatePlan, suggestStart, startFromShawwal, type Plan, type DayType, type YearConfig, type Range, type Pin, type ExamCfg, type Move } from '../engine/calendar'
+import { addDaysIso, diffDays, fromHijri, monthStarts, monthLengthIssues, suggestIslamicHolidays, toHijri } from '../engine/hijri'
 import { tr, useQuery, Card, Empty, Num, Badge, Field, Select, useDialog, useAskReason, fmtDate, WEEKDAYS_UR, WEEKDAYS_EN, WEEKDAYS_AR, lang } from '../ui'
 import { dayName, dayShort, hijriText, hijriMonth, gregMonth, TOTALS_ORDER } from './calendarMeta'
 
@@ -25,6 +25,8 @@ export function CalendarScreen() {
   const current = years?.find((y) => y.id === yearId) ?? years?.find((y) => y.start_date <= today() && !y.label.includes('نمونہ')) ?? years?.[0]
   const data = useQuery(async () => (current ? planForYear(current, session.branchId) : null), [current?.id, current?.updated_at, session.branchId])
   const canEdit = session.role === 'admin'
+  const org = useQuery(() => one<Row>('select * from organization where id = ?', [session.orgId]), [])
+  const st = useQuery(() => loadSettings(), [])
 
   return (
     <div className="stack">
@@ -33,34 +35,51 @@ export function CalendarScreen() {
         <div className="row wrap">
           <Select value={current?.id ?? ''} onChange={setYearId} options={(years ?? []).map((y) => ({ v: y.id, t: y.label }))} />
           {canEdit && current && <Link className="btn ghost" to={`/calendar/settings/${current.id}`}>{tr('کیلنڈر کی ترتیب', 'Calendar settings')}</Link>}
-          {canEdit && <button className="ghost" onClick={async () => { const n = await loadSampleYears(); d.toast(n ? tr(`${n} نمونہ سال شامل ہو گئے`, `${n} sample years added`, `أُضيفت ${n} أعوام نموذجية`) : tr('نمونہ سال پہلے سے موجود ہیں', 'Sample years already added')) }}>
-            {tr('چھپے ہوئے کیلنڈر (نمونہ) شامل کریں', 'Add the printed calendars (samples)')}</button>}
         </div>
       </div>
       {!years ? null : !current ? <Empty>{tr('ابھی کوئی تعلیمی سال نہیں۔', 'No academic year yet.')} <Link to="/setup/years">{tr('تعلیمی سال', 'Academic years')}</Link></Empty> : data && (
         <>
-          <Warnings plan={data.plan} eidEstimated={data.info.eidEstimated} izalaTarget={data.info.config.izala.days} hijri={data.hijri} from={data.info.config.start} to={data.info.config.eidFitr.to} />
+          <YearSummary plan={data.plan} label={current.label} orgName={org?.name ?? ''} hijri={data.hijri} />
+          {st && <HijriRules plan={data.plan} hijri={data.hijri} shawwalDay={Number(st['calendar.startShawwalDay'])} beforeRamadan={Number(st['calendar.ceremonyDaysBeforeRamadan'])} />}
+          <Warnings plan={data.plan} holidaysEstimated={data.info.holidaysEstimated} eidEstimated={data.info.eidEstimated} izalaTarget={data.info.config.izala.days} hijri={data.hijri} from={data.info.config.start} to={data.info.config.eidFitr.to} />
           <YearGrid hijri={data.hijri} plan={data.plan} start={data.info.config.start} end={data.info.config.eidFitr.to} weeklyHoliday={data.branch.weeklyHoliday} selected={sel} onSelect={setSel} />
-          {sel && data.plan.byDate.get(sel) && <DayDetail plan={data.plan} date={sel} />}
+          {sel && data.plan.byDate.get(sel) && <DayDetail key={sel} plan={data.plan} date={sel} canEdit={canEdit} onMove={async (to, reason) => { await saveYearConfig(current.id, { ...data.info.config, moves: [...(data.info.config.moves ?? []), { from: sel, to, reason }] }, reason); setSel(to); d.toast(tr('منتقل ہو گیا', 'Moved', 'نُقل')) }} />}
           <Legend />
-          <div className="grid2">
-            <KeyDates plan={data.plan} />
-            <Totals plan={data.plan} />
-          </div>
-          {canEdit && <SampleComparison />}
+          <Totals plan={data.plan} />
         </>
       )}
     </div>
   )
 }
 
-function Warnings({ plan, eidEstimated, izalaTarget, hijri, from, to }: { plan: Plan; eidEstimated: boolean; izalaTarget: number; hijri: { offset: number; overrides: any[] }; from: string; to: string }) {
+/** Checks the two Hijri anchors of the printed calendars: opening on N Shawwal, annual ijtima in Sha‘ban before Ramadan. */
+function HijriRules({ plan, hijri, shawwalDay, beforeRamadan }: { plan: Plan; hijri: { offset: number; overrides: any[] }; shawwalDay: number; beforeRamadan: number }) {
   const items: string[] = []
+  const open = plan.days[0]
+  if (open.hijri.m !== 10 || open.hijri.d < shawwalDay || open.hijri.d > shawwalDay + 2)
+    items.push(tr(`افتتاح ${hijriText(open.hijri)} کو ہے؛ معمول ${shawwalDay} شوال ہے۔`, `The year opens on ${hijriText(open.hijri)}; the usual day is ${shawwalDay} Shawwal.`, `يبدأ العام في ${hijriText(open.hijri)}؛ المعتاد ${shawwalDay} شوال.`))
+  const cer = plan.events.ceremony
+  if (cer.length) {
+    const last = cer[cer.length - 1], h = toHijri(last, hijri.offset, hijri.overrides)
+    const ram = fromHijri({ y: h.y, m: 9, d: 1 }, last, hijri.offset, hijri.overrides)
+    const gap = ram ? diffDays(ram, last) : null
+    if (h.m !== 8 || gap === null || Math.abs(gap - beforeRamadan) > 7)
+      items.push(tr(`سالانہ اجتماع ${hijriText(h)} کو ختم ہو رہا ہے${gap !== null ? `، رمضان سے ${gap} دن پہلے` : ''}؛ معمول شعبان میں رمضان سے تقریباً ${beforeRamadan} دن پہلے ہے۔ ضرورت ہو تو دستی تبدیلی سے دن بدلیں۔`,
+        `The annual ijtima ends on ${hijriText(h)}${gap !== null ? `, ${gap} days before Ramadan` : ''}; usually it is in Sha‘ban about ${beforeRamadan} days before Ramadan.`, `ينتهي الاجتماع السنوي في ${hijriText(h)}.`))
+  }
+  if (!items.length) return null
+  return <div className="banner warn" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>{items.map((x, i) => <div key={i}>{x}</div>)}</div>
+}
+
+function Warnings({ plan, holidaysEstimated, eidEstimated, izalaTarget, hijri, from, to }: { plan: Plan; holidaysEstimated: boolean; eidEstimated: boolean; izalaTarget: number; hijri: { offset: number; overrides: any[] }; from: string; to: string }) {
+  const items: string[] = []
+  if (holidaysEstimated) items.push(tr('عیدالاضحیٰ، عاشورہ، 12 ربیع الاول اور 14 اگست کی تعطیلات ام القریٰ سے اندازاً رکھی گئی ہیں؛ «کیلنڈر کی ترتیب» میں تصدیق کر کے محفوظ کریں۔', 'Eid al-Adha, Ashura, 12 Rabi al-Awwal and 14 August holidays are estimated from Umm al-Qura; confirm them in Calendar settings.', 'العطل مقدَّرة من أم القرى؛ أكّدها في الإعدادات.'))
   if (eidEstimated) items.push(tr('عیدالفطر کی تعطیلات ابھی مقرر نہیں؛ ہجری کیلنڈر سے اندازہ لگایا گیا ہے۔', 'Eid al-Fitr holidays are not set yet; estimated from the Hijri calendar.', 'لم تُحدَّد عطلة عيد الفطر بعد؛ قُدّرت من التقويم الهجري.'))
   for (const w of plan.warnings) {
     if (w === 'overflow') items.push(tr('سال کے دن عیدالفطر سے پہلے پورے نہیں ہو رہے۔ تعطیلات یا امتحان کے دن کم کریں۔', 'The year does not fit before Eid al-Fitr. Reduce holidays or exam days.', 'لا تتسع أيام العام قبل عيد الفطر.'))
     else if (w.startsWith('izala:')) items.push(tr(`کمزوری کا ازالہ ${w.slice(6)} دن بنتا ہے (معمول ${izalaTarget})۔`, `Remediation comes to ${w.slice(6)} days (usual ${izalaTarget}).`, `معالجة الضعف ${w.slice(6)} أيام (المعتاد ${izalaTarget}).`))
     else if (w.startsWith('pin-not-holiday:')) items.push(tr(`${fmtDate(w.slice(16))} ہفتہ وار تعطیل نہیں، مگر اس پر ملاقات مقرر ہے۔`, `${fmtDate(w.slice(16))} is not the weekly holiday but has a meeting pinned.`, `${fmtDate(w.slice(16))} ليس العطلة الأسبوعية لكن عليه لقاء.`))
+    else if (w.startsWith('move-outside:')) items.push(tr(`${fmtDate(w.slice(13))} کی دستی تبدیلی سال سے باہر ہے۔`, `The manual change on ${fmtDate(w.slice(13))} is outside the year.`, `التغيير اليدوي خارج العام.`))
     else if (w.startsWith('unscheduled:')) items.push(tr(`${w.slice(12)} دن کسی کام کے بغیر رہ گئے۔`, `${w.slice(12)} days are left unscheduled.`, `${w.slice(12)} أيام بلا جدولة.`))
   }
   for (const m of monthLengthIssues(from, to, hijri.offset, hijri.overrides)) {
@@ -69,6 +88,8 @@ function Warnings({ plan, eidEstimated, izalaTarget, hijri, from, to }: { plan: 
   if (!items.length) return null
   return <div className="banner warn" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>{items.map((x, i) => <div key={i}>{x}</div>)}</div>
 }
+
+const MONTH_TYPES: DayType[] = ['padhai', 'practice', 'dohrai_tarbiyati', 'dohrai', 'jaiza', 'bazm', 'musabqa', 'exam_prep', 'exam', 'izala', 'holiday']
 
 function YearGrid({ hijri, plan, start, end, weeklyHoliday, selected, onSelect }: { hijri: { offset: number; overrides: any[] }; plan: Plan; start: string; end: string; weeklyHoliday: number; selected: string | null; onSelect: (d: string) => void }) {
   const weekStart = (weeklyHoliday + 1) % 7
@@ -85,7 +106,7 @@ function YearGrid({ hijri, plan, start, end, weeklyHoliday, selected, onSelect }
     <div className="table-wrap">
       <table className="cal">
         <thead>
-          <tr><th className="sticky-col">{tr('مہینہ', 'Month')}</th>{Array.from({ length: COLS }, (_, i) => <th key={i} className={(weekStart + i) % 7 === weeklyHoliday ? 'wk' : ''}>{names[(weekStart + i) % 7]}</th>)}</tr>
+          <tr><th className="sticky-col">{tr('مہینہ', 'Month')}</th>{Array.from({ length: COLS }, (_, i) => <th key={i} className={(weekStart + i) % 7 === weeklyHoliday ? 'wk' : ''}>{names[(weekStart + i) % 7]}</th>)}<th>{tr('ماہانہ ترتیب', 'Month totals', 'مجموع الشهر')}</th></tr>
         </thead>
         <tbody>
           {months.map((m) => {
@@ -116,6 +137,7 @@ function YearGrid({ hijri, plan, start, end, weeklyHoliday, selected, onSelect }
                     </td>
                   )
                 })}
+                <td className="mcount">{MONTH_TYPES.map((ty) => { const n = plan.days.filter((x) => x.date.startsWith(m) && x.type === ty).length; return n ? <span key={ty} className={`chip t-${ty}`} title={dayName(ty)}>{dayShort(ty)} <Num>{n}</Num></span> : null })}</td>
               </tr>
             )
           })}
@@ -125,8 +147,11 @@ function YearGrid({ hijri, plan, start, end, weeklyHoliday, selected, onSelect }
   )
 }
 
-function DayDetail({ plan, date }: { plan: Plan; date: string }) {
+function DayDetail({ plan, date, canEdit, onMove }: { plan: Plan; date: string; canEdit: boolean; onMove: (to: string, reason: string) => Promise<void> }) {
   const d = plan.byDate.get(date)!
+  const ask = useAskReason()
+  const [to, setTo] = useState('')
+  const target = to ? plan.byDate.get(to) : null
   return (
     <Card>
       <div className="row between wrap">
@@ -139,6 +164,14 @@ function DayDetail({ plan, date }: { plan: Plan; date: string }) {
         {d.label === 'weekly' ? ` · ${tr('ہفتہ وار تعطیل', 'Weekly holiday')}` : ''}
         {d.ramadan ? ` · ${tr('رمضان: مختصر اوقات (صبح یا ظہر تا عصر)', 'Ramadan: reduced timings (morning or Zuhr–Asr)', 'رمضان: أوقات مختصرة')}` : ''}
       </div>
+      {canEdit && (
+        <div className="row wrap" style={{ marginTop: 6 }}>
+          <span>{tr('مشورے سے یہ دن اس تاریخ پر منتقل کریں:', 'Move this day (by mashwara) to:', 'انقل هذا اليوم (بالمشورة) إلى:')}</span>
+          <input type="date" value={to} min={plan.days[0].date} max={plan.days[plan.days.length - 1].date} onChange={(e) => setTo(e.target.value)} style={{ width: 'auto' }} />
+          {target && <span className="muted">{tr('وہاں اب', 'There now', 'هناك الآن')}: <span className={`chip t-${target.type}`}>{dayName(target.type)}</span> — {tr('دونوں دن آپس میں بدل جائیں گے', 'the two days swap', 'يتبادل اليومان')}</span>}
+          <button className="primary sm" disabled={!target || to === date} onClick={async () => { const r = await ask(tr('منتقلی کی وجہ (مشورہ)', 'Reason for the move (mashwara)', 'سبب النقل')); if (r) await onMove(to, r) }}>{tr('منتقل کریں', 'Move', 'انقل')}</button>
+        </div>
+      )}
     </Card>
   )
 }
@@ -148,28 +181,50 @@ function Legend() {
   return <div className="legend">{types.map((t) => <span key={t} className={`chip t-${t}`}>{dayName(t)}</span>)}</div>
 }
 
-function KeyDates({ plan }: { plan: Plan }) {
+/** The opening page of the printed calendar: title, the dates people ask about, and «یاد دہانی برائے اہم امور». */
+function YearSummary({ plan, label, orgName, hijri }: { plan: Plan; label: string; orgName: string; hijri: { offset: number; overrides: any[] } }) {
   const e = plan.events
-  const rng = (a: string[]) => (a.length ? (a.length === 1 ? dm(a[0]) : `${+a[0].slice(8, 10)}–${dm(a[a.length - 1])}`) : '—')
-  const rows: [DayType | 'exam5' | 'exam12', string[]][] = [
-    ['jaiza', e.jaiza.map(rng)],
-    ['dohrai_tarbiyati', e.tarbiyati.map(dm)],
-    ['bazm', e.bazm.map(dm)],
-    ['parents', e.parents.map(dm)],
-    ['exam5', [rng(e.fiveMonthly)]],
-    ['exam12', [rng(e.annual)]],
-    ['musabqa', e.musabqa.map(dm)],
-    ['fuzala', e.fuzala.map(dm)],
-    ['ceremony', [rng(e.ceremony)]],
-    ['izala', [rng(e.izala)]],
+  const span = (a: string[]) => { if (!a.length) return '—'; const x = a[0], y = a[a.length - 1]; return a.length === 1 ? dm(x) : x.slice(0, 7) === y.slice(0, 7) ? `${+x.slice(8, 10)}–${dm(y)}` : `${dm(x)} – ${dm(y)}` }
+  const t = today()
+  const upcoming = plan.days.find((d) => d.date >= t && ['jaiza', 'exam', 'bazm', 'parents', 'musabqa', 'fuzala', 'ceremony', 'dohrai_tarbiyati'].includes(d.type))
+  const hj = (a: string[]) => (a.length ? hijriText(toHijri(a[a.length - 1], hijri.offset, hijri.overrides)) : '')
+  const big: [string, string, string, string][] = [
+    ['opening', tr('افتتاحِ سال', 'Year opening', 'افتتاح العام'), dm(plan.days[0].date), hijriText(plan.days[0].hijri)],
+    ['exam', tr('پنج ماہی امتحان', 'Five-monthly exam', 'امتحان نصف العام'), span(e.fiveMonthly), hj(e.fiveMonthly)],
+    ['exam', tr('سالانہ امتحان', 'Annual exam', 'الامتحان السنوي'), span(e.annual), hj(e.annual)],
+    ['ceremony', tr('سالانہ اجتماع / تقریب', 'Annual ijtima / ceremony', 'الاجتماع السنوي'), span(e.ceremony), hj(e.ceremony)],
   ]
-  const nm = (k: string) => k === 'exam5' ? tr('پنج ماہی امتحان', 'Five-monthly exam', 'امتحان نصف العام') : k === 'exam12' ? tr('سالانہ امتحان', 'Annual exam', 'الامتحان السنوي') : dayName(k as DayType)
+  const rows: [string, string, string[]][] = [
+    ['jaiza', dayName('jaiza'), e.jaiza.map(span)],
+    ['dohrai_tarbiyati', tr('تربیتی سرگرمی', 'Tarbiyati activity', 'النشاط التربوي'), e.tarbiyati.map(dm)],
+    ['bazm', dayName('bazm'), e.bazm.map(dm)],
+    ['parents', dayName('parents'), e.parents.map(dm)],
+    ['exam', tr('پنج ماہی / سالانہ امتحان', 'Five-monthly / annual exam', 'نصف العام / السنوي'), [span(e.fiveMonthly), span(e.annual)]],
+    ['musabqa', dayName('musabqa'), e.musabqa.map(dm)],
+    ['fuzala', dayName('fuzala'), e.fuzala.map(dm)],
+    ['izala', dayName('izala'), [span(e.izala)]],
+  ]
   return (
-    <Card title={tr('یاد دہانی برائے اہم امور', 'Key dates', 'تذكير بالأمور المهمة')}>
-      <table className="tbl"><tbody>
-        {rows.map(([k, v]) => <tr key={k}><td><span className={`chip t-${k.startsWith('exam') ? 'exam' : k}`}>{nm(k)}</span></td><td className="wrapcell"><Num>{v.join(' · ')}</Num></td></tr>)}
-      </tbody></table>
-    </Card>
+    <div className="ys">
+      <div className="ys-head">
+        <div className="ys-title">{tr('تعلیمی کیلنڈر', 'Academic calendar', 'التقويم الدراسي')}</div>
+        <div className="ys-year"><Num>{label}</Num></div>
+        <div className="ys-org">{orgName}</div>
+      </div>
+      <div className="ys-big">
+        {big.map(([k, n, v, h]) => <div key={n} className={`ys-tile t-${k}`}><small>{n}</small><b><Num>{v}</Num></b>{h && <small>{h}</small>}</div>)}
+        {upcoming && <div className="ys-tile next"><small>{tr('اگلا اہم دن', 'Next key day', 'اليوم المهم القادم')}</small><b><Num>{dm(upcoming.date)}</Num> · {dayName(upcoming.type)}</b></div>}
+      </div>
+      <div className="ys-rem">
+        <div className="ys-remtitle">{tr('یاد دہانی برائے اہم امور', 'Reminder of key dates', 'تذكير بالأمور المهمة')}</div>
+        {rows.filter(([, , v]) => v.length && v.some((x) => x !== '—')).map(([k, n, v]) => (
+          <div key={n} className="ys-row">
+            <span className={`ys-pill t-${k}`}>{n}</span>
+            <div className="ys-dates">{v.filter((x) => x !== '—').map((x, i) => <span key={i} className="ys-date"><Num>{x}</Num></span>)}</div>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -185,39 +240,6 @@ function Totals({ plan }: { plan: Plan }) {
   )
 }
 
-// ============ Comparison with the printed calendars ============
-function SampleComparison() {
-  const [open, setOpen] = useState(false)
-  const rows = open ? SAMPLES.map((s) => {
-    const p = generatePlan(s.config, { weeklyHoliday: 0, practiceWeekday: 6 })
-    const e = p.events
-    const ends = (a: string[]) => a.length ? `${a[0]}…${a[a.length - 1]}` : ''
-    const items: [string, string, string][] = [
-      [tr('پنج ماہی امتحان', 'Five-monthly exam'), ends(s.printed.fiveMonthly), ends(e.fiveMonthly)],
-      [tr('سالانہ امتحان', 'Annual exam'), ends(s.printed.annual), ends(e.annual)],
-      ...s.printed.jaiza.map((j, i) => [`${dayName('jaiza')} ${i + 1}`, j.join('…'), ends(e.jaiza[i] ?? [])] as [string, string, string]),
-      ...s.printed.tarbiyati.map((j, i) => [`${dayName('dohrai_tarbiyati')} ${i + 1}`, j, e.tarbiyati[i] ?? ''] as [string, string, string]),
-      ...s.printed.bazm.map((j, i) => [`${dayName('bazm')} ${i + 1}`, j, e.bazm[i] ?? ''] as [string, string, string]),
-      ...s.printed.musabqa.map((j, i) => [`${dayName('musabqa')} ${i + 1}`, j, e.musabqa[i] ?? ''] as [string, string, string]),
-    ]
-    return { s, items, ok: items.filter((x) => x[1] === x[2]).length }
-  }) : []
-  return (
-    <Card title={tr('چھپے ہوئے کیلنڈروں سے موازنہ', 'Check against the printed calendars', 'مقارنة بالتقاويم المطبوعة')}
-      actions={<button className="ghost sm" onClick={() => setOpen(!open)}>{open ? tr('بند کریں', 'Hide', 'إخفاء') : tr('دکھائیں', 'Show', 'عرض')}</button>}>
-      <p className="hint">{tr('2023/24، 2024/25 اور 2025/26 کے چھپے ہوئے کیلنڈر کی ہر تاریخ انجن کی نکالی ہوئی تاریخ کے ساتھ۔', 'Every date on the 2023/24, 2024/25 and 2025/26 printed calendars next to the date the engine produces.', 'كل تاريخ في التقاويم المطبوعة بجانب ما ينتجه المحرك.')}</p>
-      {rows.map(({ s, items, ok }) => (
-        <details key={s.label} open>
-          <summary><b>{s.label}</b> · <Badge kind={ok === items.length ? 'ok' : 'err'}><Num>{ok}/{items.length}</Num></Badge></summary>
-          <table className="tbl"><thead><tr><th /><th>{tr('چھپا ہوا', 'Printed', 'المطبوع')}</th><th>{tr('انجن', 'Engine', 'المحرك')}</th><th /></tr></thead>
-            <tbody>{items.map(([k, a, b], i) => <tr key={i}><td>{k}</td><td><Num>{a}</Num></td><td><Num>{b}</Num></td><td>{a === b ? '✓' : '✗'}</td></tr>)}</tbody></table>
-        </details>
-      ))}
-    </Card>
-  )
-}
-
-// ============ Calendar settings (head office) ============
 export function CalendarSettings() {
   const d = useDialog()
   const ask = useAskReason()
@@ -226,6 +248,7 @@ export function CalendarSettings() {
   const row = years?.find((y) => y.id === yearId)
   const data = useQuery(async () => (row ? planForYear(row, session.branchId) : null), [row?.id, row?.updated_at])
   const [cfg, setCfg] = useState<YearConfig | null>(null)
+  const st = useQuery(() => loadSettings(), [])
   const [loadedFor, setLoadedFor] = useState('')
   if (data && loadedFor !== `${row?.id}|${row?.updated_at}`) { setLoadedFor(`${row?.id}|${row?.updated_at}`); setCfg(structuredClone(data.info.config)) }
   if (!row || !cfg || !data) return null
@@ -259,12 +282,31 @@ export function CalendarSettings() {
           </Field>
           <Field label={tr('افتتاحِ سال', 'Year opening', 'افتتاح العام')} hint={hijriText(toHijri(cfg.start, data.hijri.offset, data.hijri.overrides))}>
             <input type="date" value={cfg.start} onChange={(e) => e.target.value && set({ start: e.target.value })} />
+            {st && <button className="ghost sm" onClick={() => { const hy = toHijri(cfg.start, data.hijri.offset, data.hijri.overrides).y; const hs = toHijri(cfg.start, data.hijri.offset, data.hijri.overrides); const y = hs.m >= 10 ? hy : hy - 1; const d0 = startFromShawwal(y, Number(st['calendar.startShawwalDay']), data.branch, cfg.start, data.hijri.offset, data.hijri.overrides); if (d0) set({ start: d0 }) }}>
+              {tr(`${st['calendar.startShawwalDay']} شوال کے مطابق رکھیں`, `Set to ${st['calendar.startShawwalDay']} Shawwal`, `اضبط على ${st['calendar.startShawwalDay']} شوال`)}</button>}
           </Field>
           <Field label={tr('عیدالفطر کی تعطیلات: سے', 'Eid al-Fitr holidays: from', 'عطلة عيد الفطر: من')}><input type="date" value={cfg.eidFitr.from} onChange={(e) => set({ eidFitr: { ...cfg.eidFitr, from: e.target.value } })} /></Field>
           <Field label={tr('تک', 'To')}><input type="date" value={cfg.eidFitr.to} onChange={(e) => set({ eidFitr: { ...cfg.eidFitr, to: e.target.value } })} /></Field>
         </div>
       </Card>
 
+      <Card title={tr('دستی تبدیلیاں (مشورے سے)', 'Manual changes (by mashwara)', 'تغييرات يدوية (بالمشورة)')} actions={<button className="ghost sm" onClick={() => set({ moves: [...(cfg.moves ?? []), { from: cfg.start, to: cfg.start, reason: '' }] })}>{tr('نئی تبدیلی', 'New change', 'تغيير جديد')}</button>}>
+        <p className="hint">{tr('دو تاریخیں چنیں؛ دونوں دن آپس میں بدل جائیں گے۔ باقی ترتیب وہی رہے گی۔ کیلنڈر میں کسی دن کو دبا کر بھی منتقل کر سکتے ہیں۔', 'Pick two dates; the two days swap. Everything else stays. You can also tap a day in the calendar to move it.', 'اختر تاريخين؛ يتبادل اليومان.')}</p>
+        {(cfg.moves ?? []).length === 0 && <Empty>{tr('کوئی دستی تبدیلی نہیں', 'No manual changes', 'لا تغييرات')}</Empty>}
+        {(cfg.moves ?? []).map((m, i) => {
+          const upd = (patch: Partial<Move>) => set({ moves: cfg.moves!.map((x, j) => (j === i ? { ...x, ...patch } : x)) })
+          const a = preview.byDate.get(m.from)
+          return (
+            <div key={i} className="row wrap">
+              <Field label={tr('یہ دن', 'This day', 'هذا اليوم')}><input type="date" value={m.from} onChange={(e) => upd({ from: e.target.value })} /></Field>
+              <Field label={tr('اس دن سے بدلیں', 'Swap with', 'مبادلة مع')}><input type="date" value={m.to} onChange={(e) => upd({ to: e.target.value })} /></Field>
+              <Field label={tr('وجہ', 'Reason', 'السبب')}><input value={m.reason} onChange={(e) => upd({ reason: e.target.value })} /></Field>
+              {a && <span className={`chip t-${a.type}`}>{dayName(a.type)}</span>}
+              <button className="ghost sm" onClick={() => set({ moves: cfg.moves!.filter((_, j) => j !== i) })}>{tr('ہٹائیں', 'Remove', 'إزالة')}</button>
+            </div>
+          )
+        })}
+      </Card>
       <Card title={tr('تعطیلات', 'Holidays', 'العطلات')} actions={<button className="ghost sm" onClick={() => set({ holidays: [...cfg.holidays, { from: cfg.start, to: cfg.start, reason: '' }] })}>{tr('تعطیل شامل کریں', 'Add holiday', 'إضافة عطلة')}</button>}>
         <p className="hint">{tr('ہفتہ وار تعطیل مکتب کی ترتیب سے آتی ہے۔ یہاں عیدالاضحیٰ، محرم، قومی اور مقامی تعطیلات درج کریں۔ درمیان میں آنے والی تعطیل باقی سال کو آگے کر دیتی ہے۔', 'The weekly holiday comes from the branch. Enter Eid al-Adha, Muharram, national and local holidays here. A holiday inside a cycle pushes the rest of the year forward.', 'العطلة الأسبوعية من إعداد المكتب. أدخل هنا عيد الأضحى ومحرم والعطلات الوطنية والمحلية.')}</p>
         <RangeRows rows={cfg.holidays} onChange={(holidays) => set({ holidays })} />
@@ -303,7 +345,6 @@ export function CalendarSettings() {
       </Card>
 
       <Card title={tr('ماہانہ دور', 'Monthly cycle', 'الدورة الشهرية')}>
-        <p className="hint">{tr('کتاب ص 135: 20 دن پڑھائی، 3 دن دہرائی، 2 دن ماہانہ جائزہ، 1 دن بزم۔ ہر امتحان سے پہلے بھی 20 دن پڑھائی۔', 'Book p. 135: 20 teaching, 3 revision, 2 review, 1 bazm. Each exam also follows 20 teaching days.', 'الكتاب ص 135: 20 دراسة، 3 مراجعة، 2 تقييم، 1 بزم.')}</p>
         <div className="grid2">
           {(['padhai', 'dohrai', 'jaiza', 'bazm'] as const).map((k) => (
             <Field key={k} label={dayName(k)}><input type="number" dir="ltr" value={cfg.cycle[k]} onChange={(e) => set({ cycle: { ...cfg.cycle, [k]: +e.target.value } })} /></Field>

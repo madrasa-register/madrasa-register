@@ -20,6 +20,9 @@ export function setLang(l: Lang) {
 export const tr = (ur: string, en: string, ar?: string) =>
   lang === 'ur' ? ur : lang === 'en' ? en : (ar ?? AR[en] ?? ur)
 
+/** The app's name in the three languages. */
+export const appName = () => tr('مدرسہ رجسٹر', 'Madrasa Register', 'سجل المدرسة')
+
 /** Language picker used in the menu and on the setup screen. */
 export function LangSelect({ onChange }: { onChange?: () => void }) {
   return (

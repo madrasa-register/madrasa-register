@@ -1,3 +1,4 @@
+import { Cover } from './Cover'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { all, get, one, session, today, detId, insert, update, ReasonRequired, type Row } from '../db/db'
@@ -33,6 +34,7 @@ export function Today() {
       return { c, roll: roll.length, cd, marked: marked?.n ?? 0, teacher: t, branch: b }
     }))
   }, [date])
+  const me = useQuery(() => get('app_user', session.userId), [])
   const alerts = useQuery(() => all<{ n: number }>(`select count(*) n from alert where status = 'open' and (? is null or branch_id = ?)
     and (? is null or class_id in (select class_id from class_teacher where teacher_id = ? and (to_date is null or to_date = '')))`,
   [session.branchId, session.branchId, session.teacherId, session.teacherId]), [])
@@ -42,6 +44,7 @@ export function Today() {
   }
   return (
     <div className="stack">
+      {me && <Cover user={{ ...me, role: session.role }} />}
       <div className="row between wrap">
         <h1>{tr('آج', 'Today')} · <Num>{fmtDate(date)}</Num> · {dayName(date)}</h1>
         <div className="row">
@@ -408,7 +411,7 @@ function FollowUp({ alert, onClose, onSaved }: { alert: Row; onClose: () => void
             { v: 'no_answer', t: tr('رابطہ نہیں ہو سکا', 'Could not reach') },
           ]} />
         </Field>
-        <Field label={tr('غیر حاضری کی وجہ', 'Reason for absence')} hint={tr('رجسٹر ص 53', 'Reg. p. 53')}>
+        <Field label={tr('غیر حاضری کی وجہ', 'Reason for absence')}>
           <input value={reason} onChange={(e) => setReason(e.target.value)} />
         </Field>
         <Field label={tr('نوٹ', 'Note')}><textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></Field>
@@ -549,7 +552,7 @@ function TodayInCalendar({ date }: { date: string }) {
       </div>
       {data.nextExam && (
         <Link to="/prizes" className="banner warn" style={{ marginTop: 6 }}>
-          {tr(`امتحان ${fmtDate(data.nextExam)} کو ہے: کمزور طلبہ کے والدین سے انفرادی ملاقات کریں (کتاب ص 68)`, `Exam on ${fmtDate(data.nextExam)}: meet the parents of weak students individually (Book p. 68)`, `الامتحان في ${fmtDate(data.nextExam)}: قابِل أولياء أمور الطلاب الضعاف`)}
+          {tr(`امتحان ${fmtDate(data.nextExam)} کو ہے: کمزور طلبہ کے والدین سے انفرادی ملاقات کریں`, `Exam on ${fmtDate(data.nextExam)}: meet the parents of weak students individually`, `الامتحان في ${fmtDate(data.nextExam)}: قابِل أولياء أمور الطلاب الضعاف`)}
         </Link>
       )}
       {data.upcoming.length > 0 && (

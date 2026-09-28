@@ -116,7 +116,6 @@ export function Admission() {
   return (
     <div className="stack">
       <h1>{tr('نیا داخلہ', 'New admission')}</h1>
-      <p className="hint">{tr('طالب علم کا اندراج سال میں ایک بار ہوتا ہے؛ باقی تمام حصے اسی ریکارڈ سے پڑھتے ہیں (رجسٹر ص 1)۔', 'A student is entered once per year; every module reads this record (Reg. p. 1).')}</p>
       <Card title={tr('سرپرست / خاندان', 'Guardian / family')}>
         <div className="grid2">
           <Field label={tr('فون نمبر 1', 'Phone 1')} hint={tr('نمبر لکھنے پر موجود خاندان تلاش ہوگا (بہن بھائی)', 'Typing finds an existing family (siblings)')}>
@@ -157,6 +156,9 @@ export function Admission() {
           <Field label={tr('مقدار خواندگی', 'Reading level at admission')}><input value={en.miqdar} onChange={setK(en, setEn, 'miqdar')} /></Field>
         </div>
       </Card>
+      {classes && classes.length === 0 && (
+        <div className="banner warn">{tr('ابھی کوئی جماعت نہیں بنی۔ داخلے سے پہلے جماعت بنائیں۔', 'No class yet. Create a class before admitting students.', 'لا يوجد فصل بعد. أنشئ فصلاً قبل القبول.')} <Link to="/setup/classes">{tr('جماعت بنائیں', 'Create a class', 'أنشئ فصلاً')}</Link></div>
+      )}
       <Card title={tr('جماعت', 'Class')}>
         <div className="grid2">
           <Field label={tr('جماعت', 'Class')}><Select value={en.classId} onChange={pickClass} empty="" options={(classes ?? []).map((c) => ({ v: c.id, t: c.name }))} /></Field>
@@ -283,23 +285,55 @@ function AttSummary({ s, bands }: { s: ReturnType<typeof summarize>; bands: Band
   )
 }
 
+export const TABLE_NAME: Record<string, [string, string]> = {
+  student: ['طالب علم', 'Student'], enrollment: ['جماعت میں داخلہ', 'Enrollment'], family: ['خاندان', 'Family'],
+  student_attendance: ['طلبہ کی حاضری', 'Student attendance'], class_day: ['حاضری کا دن', 'Class day'],
+  teacher_attendance: ['اساتذہ کی حاضری', 'Teacher attendance'], teacher: ['معلم', 'Teacher'], class: ['جماعت', 'Class'],
+  class_teacher: ['جماعت کا معلم', 'Class teacher'], branch: ['مکتب', 'Branch'], academic_year: ['تعلیمی سال', 'Academic year'],
+  app_user: ['صارف', 'User'], setting: ['ترتیب', 'Setting'], alert: ['الرٹ', 'Alert'], eligibility_exception: ['امتحان کی اجازت', 'Exam exception'],
+  monthly_class_record: ['ماہانہ سبق ریکارڈ', 'Monthly lesson record'], mark_scheme: ['نمبروں کی اسکیم', 'Mark scheme'], exam: ['امتحان', 'Exam'],
+  exam_student: ['امتحان کا طالب علم', 'Exam student'], score_entry: ['نمبر', 'Marks'], deduction_event: ['غلطی کا اندراج', 'Mistake'],
+  payment: ['ہدیہ کی وصولی', 'Payment'], fee_plan: ['ہدیہ کی مقدار', 'Fee amount'], fund_entry: ['مٹھی فنڈ', 'Fund'],
+  activity_log: ['کارگزاری', 'Activity'], hijri_override: ['ہجری مہینے کی درستی', 'Hijri correction'], organization: ['ادارہ', 'Organization'],
+  card_status: ['نتیجہ کارڈ', 'Result card'],
+}
+const ACTION_NAME: Record<string, [string, string]> = {
+  create: ['نیا اندراج', 'Created'], update: ['تبدیلی', 'Changed'], deactivate: ['غیر فعال', 'Deactivated'], reactivate: ['دوبارہ فعال', 'Re-activated'],
+  withdraw: ['خارج', 'Withdrawn'], rejoin: ['دوبارہ داخلہ', 'Rejoined'], transfer: ['منتقلی', 'Transferred'], void: ['منسوخ', 'Voided'],
+  'absence-reason': ['غیر حاضری کی وجہ', 'Absence reason'], calendar: ['کیلنڈر', 'Calendar'], 'card-status': ['کارڈ کی کیفیت', 'Card status'],
+  'class-remark': ['جماعت پر رائے', 'Class remark'], close: ['بند', 'Closed'], correct: ['درستی', 'Corrected'], finalize: ['مکمل', 'Finalized'],
+  'follow-up': ['رابطہ', 'Follow-up'], holiday: ['تعطیل', 'Holiday'], 'moon-sighting': ['رؤیتِ ہلال', 'Moon sighting'], 'new-version': ['نیا ورژن', 'New version'],
+  reopen: ['دوبارہ کھولا', 'Reopened'], score: ['نمبر', 'Marks'], sign: ['دستخط', 'Signed'], 'student-meta': ['طالب علم کی تفصیل', 'Student details'],
+  submit: ['رجسٹر محفوظ', 'Register saved'], teaching: ['تدریس', 'Teaching'], undo: ['واپس', 'Undone'],
+}
+const HIDE_KEYS = /(^id$|_id$|_at$|_by$|^lineage|definition|^config$|json$|^scope|^version$)/
+function shortVal(v: any): string {
+  if (v === null || v === undefined || v === '') return '—'
+  if (v === 'P' || v === 'A' || v === 'L') return tr(STATUS_LABEL[v][0], v)
+  const t = String(v)
+  return t.length > 40 ? t.slice(0, 40) + '…' : t
+}
 export function AuditList({ rows }: { rows: Row[] }) {
   if (!rows.length) return <Empty>{tr('کوئی تبدیلی نہیں', 'No changes')}</Empty>
-  const show = (j: string | null) => {
-    if (!j) return ''
-    const o = JSON.parse(j)
-    return Object.entries(o).map(([k, v]) => `${k}: ${v === 'P' || v === 'A' || v === 'L' ? tr(STATUS_LABEL[v as string][0], v as string) : v ?? '—'}`).join(' · ')
-  }
+  const parse = (j: string | null): Record<string, any> => { try { return j ? JSON.parse(j) : {} } catch { return {} } }
+  const fields = (o: Record<string, any>) => Object.entries(o).filter(([k]) => !HIDE_KEYS.test(k))
   return (
     <div className="audit">
-      {rows.map((a) => (
-        <div key={a.id} className="audit-row">
-          <div className="row between"><strong>{a.table_name} · {a.action}</strong><span className="muted"><Num>{fmtDate(a.created_at)} {a.created_at?.slice(11, 16)}</Num> · {a.user_name ?? ''}</span></div>
-          {a.old_json && <div className="muted">{tr('پہلے', 'Before')}: <span dir="auto">{show(a.old_json)}</span></div>}
-          {a.new_json && <div>{a.action === 'create' ? tr('اندراج', 'Created') : tr('بعد', 'After')}: <span dir="auto">{show(a.new_json)}</span></div>}
-          {a.reason && <div>{tr('وجہ', 'Reason')}: {a.reason}</div>}
-        </div>
-      ))}
+      {rows.map((a) => {
+        const nv = parse(a.new_json), ov = parse(a.old_json)
+        const title = nv.name || nv.label || nv.guardian_name || ''
+        const tn = TABLE_NAME[a.table_name], an = ACTION_NAME[a.action]
+        return (
+          <div key={a.id} className="audit-row">
+            <div className="row between"><strong>{tn ? tr(...tn) : a.table_name} · {an ? tr(...an) : a.action}{title ? ` · ${shortVal(title)}` : ''}</strong>
+              <span className="muted"><Num>{fmtDate(a.created_at)} {a.created_at?.slice(11, 16)}</Num> · {a.user_name ?? ''}</span></div>
+            {a.action !== 'create' && fields(nv).filter(([k, v]) => shortVal(v) !== shortVal(ov[k])).map(([k, v]) => (
+              <div key={k} className="muted"><span dir="ltr">{k}</span>: {tr('پہلے', 'Before')} <b dir="auto">{shortVal(ov[k])}</b> · {tr('اب', 'Now')} <b dir="auto">{shortVal(v)}</b></div>
+            ))}
+            {a.reason && <div>{tr('وجہ', 'Reason')}: {a.reason}</div>}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -311,7 +345,7 @@ function WithdrawDlg({ onClose, onSave }: { onClose: () => void; onSave: (date: 
   const [date, setDate] = useState(today()); const [reason, setReason] = useState('')
   return (
     <Modal title={tr('طالب علم کو خارج کریں', 'Withdraw student')} onClose={onClose}>
-      <p className="hint">{tr('ریکارڈ کبھی حذف نہیں ہوتا؛ رجسٹر میں نام پر ✗ اور لکیر لگے گی (رجسٹر ص 52)۔', 'The record is never deleted; the register shows ✗ and a line (Reg. p. 52).')}</p>
+      <p className="hint">{tr('ریکارڈ حذف نہیں ہوگا۔', 'The record is not deleted.', 'لن يُحذف السجل.')}</p>
       <Field label={tr('تاریخ', 'Date')}><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
       <Field label={tr('وجہ (ضروری)', 'Reason (required)')}><textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
       <div className="row end"><button className="ghost" onClick={onClose}>{tr('منسوخ', 'Cancel')}</button><button className="danger" disabled={!reason.trim() || !date} onClick={() => onSave(date, reason)}>{tr('خارج کریں', 'Withdraw')}</button></div>

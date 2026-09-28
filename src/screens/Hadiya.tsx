@@ -24,7 +24,6 @@ export function Hadiya() {
           ))}
         </div>}
       </div>
-      <p className="hint">{tr('ہدیہ مکتب کی اپنی آمدنی ہے؛ ادارہ اس میں حصہ نہیں لیتا (کتاب ص 66)۔ کسی بچے کو ادائیگی نہ کر سکنے پر نہ لوٹایا جائے (کتاب ص 44)۔', "Hadiya is the branch's own income; the organization takes no share (Book p. 66). No child is refused for inability to pay (Book p. 44).", 'الهدية دخل المكتب نفسه.')}</p>
       {headOnly ? <HeadOfficeTotals /> : tab === 'chart' ? <Chart /> : tab === 'pay' ? <Payment /> : tab === 'fees' ? <Fees /> : tab === 'receipts' ? <Receipts /> : <Fund />}
     </div>
   )
@@ -180,7 +179,6 @@ function Fees() {
   return (
     <>
       <Select value={classId} onChange={setClassId} options={(classes ?? []).map((c) => ({ v: c.id, t: c.name }))} />
-      <p className="hint">{tr(`مکتب کی عام مقدار ${def} روپے (کم از کم 500، رجسٹر ص 51)۔ ہر طالب علم کی الگ مقدار ہو سکتی ہے اور ہر سال بڑھ سکتی ہے۔`, `Branch default Rs ${def} (minimum 500, Reg. p. 51). Each student may differ and the amount may rise each year.`, `المقدار الافتراضي ${def}`)}</p>
       {data && <div className="table-wrap"><table className="tbl">
         <thead><tr><th>{tr('نام', 'Name')}</th><th>{tr('ماہانہ ہدیہ', 'Monthly hadiya', 'الهدية الشهرية')}</th><th>{tr('کب سے', 'From', 'من')}</th><th>{tr('کیفیت', 'Status')}</th><th /></tr></thead>
         <tbody>{data.studs.map((s) => {
@@ -227,7 +225,6 @@ function Fund() {
   const total = (rows ?? []).reduce((a, r) => a + r.amount, 0)
   return (
     <div className="stack">
-      <p className="hint">{tr('مٹھی فنڈ کی رقم مکتب کے فنڈ میں جاتی ہے (کتاب ص 66)۔', 'Mutthi fund contributions go to the branch fund (Book p. 66).', 'تذهب مساهمات صندوق القبضة إلى صندوق المكتب.')}</p>
       <div className="row wrap">
         <input type="number" dir="ltr" placeholder={tr('رقم', 'Amount', 'المبلغ')} value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} />
         <input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
@@ -245,7 +242,7 @@ function HeadOfficeTotals() {
   return (
     <Card title={tr('مکاتب کے کل (تفصیل مکتب کی اجازت سے)', 'Branch totals (details only if the branch allows)', 'مجاميع المكاتب')}>
       {rows?.length ? <table className="tbl"><tbody>{rows.map((r, i) => <tr key={i}><td>{r.name}</td><td><Num>{rs(r.total ?? 0)}</Num></td><td><Num>{r.n}</Num> {tr('رسیدیں', 'receipts', 'إيصالات')}</td></tr>)}</tbody></table> : <Empty>{tr('ابھی کچھ نہیں', 'Nothing yet', 'لا شيء')}</Empty>}
-      <p className="hint">{tr('تفصیل دکھانے کے لیے ترتیبات میں hadiya.shareWithHeadOffice آن کریں۔', 'Turn on hadiya.shareWithHeadOffice in Settings to show details.', 'فعّل الإعداد لعرض التفاصيل.')}</p>
+      <p className="hint">{tr('تفصیل دیکھنے کے لیے مکتب اپنی ترتیبات میں «ہیڈ آفس کو ہدیہ کی تفصیل دکھائیں» آن کرے۔', 'To see details, the branch turns on “Show hadiya details to head office” in its Settings.', 'لعرض التفاصيل يفعّل الفرع «إظهار تفاصيل الهدية للمكتب الرئيسي» في إعداداته.')}</p>
     </Card>
   )
 }

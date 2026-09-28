@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
-  appId: 'eu.hasnainin.maktab',
-  appName: 'مکتب ایپ',
+  appId: 'com.madrasaregister.app',
+  appName: 'مدرسہ رجسٹر',
   webDir: 'dist',
   android: { allowMixedContent: false },
 }

@@ -3,7 +3,7 @@
 import { all, one, get, insert, update, detId, session, type Row } from './db'
 import { loadSettings } from './repo'
 import { generatePlan, DEFAULT_YEAR, type YearConfig, type Plan, type BranchCfg } from '../engine/calendar'
-import { fromHijri, toHijri, addDaysIso, type HijriOverride } from '../engine/hijri'
+import { fromHijri, toHijri, addDaysIso, suggestIslamicHolidays, type HijriOverride } from '../engine/hijri'
 import { SAMPLES } from '../engine/calendarSamples'
 
 export type HijriCtx = { offset: number; overrides: HijriOverride[] }
@@ -24,21 +24,37 @@ export async function saveHijriOverride(hy: number, hm: number, start: string, r
 /** Eid al-Fitr holidays estimated from the Hijri calendar (1 Shawwal − 3 … + 3) when head office has not set them. */
 export function estimateEid(start: string, h: HijriCtx) {
   const hs = toHijri(start, h.offset, h.overrides)
-  const eid = fromHijri({ y: hs.y + 1, m: 10, d: 1 }, addDaysIso(start, 354), h.offset, h.overrides) ?? addDaysIso(start, 354)
+  // the first Eid al-Fitr after the start (a year opened in Shawwal ends at the next year's Eid)
+  const hy = hs.m < 10 ? hs.y : hs.y + 1
+  const eid = fromHijri({ y: hy, m: 10, d: 1 }, addDaysIso(start, hs.m < 10 ? 100 : 354), h.offset, h.overrides) ?? addDaysIso(start, 354)
   return { from: addDaysIso(eid, -3), to: addDaysIso(eid, 3) }
 }
 
-export type YearInfo = { row: Row; config: YearConfig; eidEstimated: boolean }
+export type YearInfo = { row: Row; config: YearConfig; eidEstimated: boolean; holidaysEstimated: boolean }
+
+/** Usual holidays of the printed calendars, from Umm al-Qura, for a year whose holidays are not set yet. */
+export function defaultHolidays(start: string, end: string, h: HijriCtx) {
+  const out = suggestIslamicHolidays(start, end, h.offset, h.overrides).filter((x) => !x.key.startsWith('fitr')).map((x) =>
+    x.key.startsWith('adha') ? { from: addDaysIso(x.from, -1), to: addDaysIso(x.from, 7), reason: x.reason } : { from: x.from, to: x.to, reason: x.reason })
+  for (let y = +start.slice(0, 4); y <= +end.slice(0, 4); y++) {
+    const d = `${y}-08-14`
+    if (d >= start && d <= end) out.push({ from: d, to: d, reason: 'یومِ آزادی' })
+  }
+  return out.sort((a, b) => a.from.localeCompare(b.from))
+}
 export function yearConfigOf(row: Row, h: HijriCtx): YearInfo {
   let saved: Partial<YearConfig> = {}
   try { saved = row.config ? JSON.parse(row.config) : {} } catch { /* keep defaults */ }
   const eidEstimated = !saved.eidFitr
+  const holidaysEstimated = !saved.holidays
+  const eidFitr = saved.eidFitr ?? estimateEid(row.start_date, h)
   const config: YearConfig = {
     ...DEFAULT_YEAR, ...saved,
     start: row.start_date,
-    eidFitr: saved.eidFitr ?? estimateEid(row.start_date, h),
+    eidFitr,
+    holidays: saved.holidays ?? defaultHolidays(row.start_date, eidFitr.to, h),
   }
-  return { row, config, eidEstimated }
+  return { row, config, eidEstimated, holidaysEstimated }
 }
 
 export async function branchCfg(branchId: string | null): Promise<BranchCfg> {

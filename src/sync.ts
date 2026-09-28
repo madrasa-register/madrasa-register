@@ -40,8 +40,8 @@ export async function loadMember(userId: string): Promise<Member | null> {
   return (data as Member) ?? null
 }
 
-export async function claimOrganization(orgId: string, appUserId: string): Promise<string> {
-  const { data, error } = await supabase.rpc('claim_organization', { org: orgId, app_user: appUserId })
+export async function claimOrganization(orgId: string, appUserId: string, info: { orgName?: string; branchName?: string; address?: string } = {}): Promise<string> {
+  const { data, error } = await supabase.rpc('claim_organization', { org: orgId, app_user: appUserId, org_name: info.orgName ?? null, branch_name: info.branchName ?? null, address: info.address ?? null })
   if (error) throw error
   return data as string
 }
@@ -95,32 +95,47 @@ class Connector implements PowerSyncBackendConnector {
     return { endpoint: POWERSYNC_URL, token: s.access_token, expiresAt: s.expires_at ? new Date(s.expires_at * 1000) : undefined }
   }
 
+  /**
+   * Sends queued local changes in batches: consecutive new/replaced rows of the same table go in one
+   * request (a first sync of a maktab is thousands of rows). If the server refuses a batch, its rows
+   * are retried one by one so that only the refused row is set aside (kept locally, never dropped).
+   */
   async uploadData(database: AbstractPowerSyncDatabase) {
-    const tx = await database.getNextCrudTransaction()
-    if (!tx) return
-    let last: any = null
-    try {
-      for (const op of tx.crud) {
-        last = op
-        const t = supabase.from(op.table)
-        let res: any
-        if (op.op === UpdateType.PUT) res = await t.upsert({ ...op.opData, id: op.id })
-        else if (op.op === UpdateType.PATCH) res = await t.update(op.opData!).eq('id', op.id)
-        else continue // the app never deletes; ignore just in case
-        if (res.error) throw res.error
-      }
-      await tx.complete()
-    } catch (e: any) {
-      if (typeof e?.code === 'string' && FATAL.some((r) => r.test(e.code))) {
-        console.error('Upload rejected by server, kept locally', e, last)
-        keepRejected(last, e)
-        await tx.complete()
-      } else {
-        throw e // network or temporary problem: PowerSync retries later
+    const batch = await database.getCrudBatch(500)
+    if (!batch) return
+    const ops = batch.crud
+    const one = async (op: any) => {
+      const t = supabase.from(op.table)
+      const res: any = op.op === UpdateType.PUT ? await t.upsert({ ...op.opData, id: op.id })
+        : op.op === UpdateType.PATCH ? await t.update(op.opData!).eq('id', op.id) : { error: null } // the app never deletes
+      if (res.error) throw res.error
+    }
+    const safe = async (op: any) => {
+      try { await one(op) } catch (e: any) {
+        if (isFatal(e)) { console.error('Upload rejected by server, kept locally', e, op); keepRejected(op, e) } else throw e
       }
     }
+    let k = 0
+    while (k < ops.length) {
+      const op = ops[k]
+      if (op.op !== UpdateType.PUT) { await safe(op); k++; continue }
+      let m = k
+      while (m < ops.length && ops[m].op === UpdateType.PUT && ops[m].table === op.table) m++
+      const group = ops.slice(k, m)
+      if (group.length === 1) await safe(op)
+      else {
+        const { error } = await supabase.from(op.table).upsert(group.map((g) => ({ ...g.opData, id: g.id })))
+        if (error) {
+          if (!isFatal(error)) throw error
+          for (const g of group) await safe(g)
+        }
+      }
+      k = m
+    }
+    await batch.complete()
   }
 }
+const isFatal = (e: any) => typeof e?.code === 'string' && FATAL.some((r) => r.test(e.code))
 
 // ---- connection status for the header ---------------------------------------------
 export type SyncState = { connected: boolean; connecting: boolean; uploading: boolean; downloading: boolean; lastSyncedAt?: Date; hasSynced?: boolean }
@@ -156,4 +171,25 @@ export async function disconnect() {
 /** Waits (up to `ms`) until the first full download from the server has finished. */
 export async function waitForFirstSync(ms = 60000) {
   await Promise.race([db().waitForFirstSync(), new Promise((r) => setTimeout(r, ms))])
+}
+
+// ---- approval of new organizations ------------------------------------------------
+const PENDING_KEY = 'maktab.pending'
+export const pendingApproval = () => { try { return localStorage.getItem(PENDING_KEY) } catch { return null } }
+export const setPendingApproval = (v: string | null) => { try { v ? localStorage.setItem(PENDING_KEY, v) : localStorage.removeItem(PENDING_KEY) } catch { /* ignore */ } }
+
+export async function isPlatformOwner(): Promise<boolean> {
+  const { data, error } = await supabase.rpc('is_platform_owner')
+  return !error && !!data
+}
+export type OrgRequest = { user_id: string; email: string; organization_id: string; org_name: string | null; branch_name: string | null; address: string | null; status: string; created_at: string }
+export async function orgRequests(): Promise<OrgRequest[]> {
+  const { data, error } = await supabase.from('org_request').select('*').order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as OrgRequest[]
+}
+export async function decideOrgRequest(userId: string, approve: boolean): Promise<string> {
+  const { data, error } = await supabase.rpc('decide_org_request', { requester: userId, approve })
+  if (error) throw error
+  return data as string
 }

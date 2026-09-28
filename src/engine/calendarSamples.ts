@@ -1,4 +1,4 @@
-// The three printed تعلیمی کیلنڈر of مکتب تعلیم القرآن الکریم, entered as the
+// Three real academic calendars (2023/24 – 2025/26), entered as the
 // head-office inputs they imply (start date, holidays, pinned meetings and the
 // exam/ceremony lengths printed that year), together with the dates and totals
 // printed on each calendar. Used by the tests and the "sample years" loader.

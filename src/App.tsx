@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
-import { HashRouter, NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { HashRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { App as CapApp } from '@capacitor/app'
+import { Capacitor } from '@capacitor/core'
 import { all, one, session, dbMode, type Row } from './db/db'
-import { DialogHost, tr, LangSelect, useQuery, label, ROLES, bumpVersion } from './ui'
+import { DialogHost, useDialog, tr, LangSelect, useQuery, label, ROLES, bumpVersion } from './ui'
 import { SetupWizard, UserPicker } from './screens/Setup'
 import { Today, TakeAttendance, MonthlyRegister, Alerts, TeacherTime, ClassRecord } from './screens/Attendance'
 import { StudentIndex, Admission, StudentProfile, FamilyView } from './screens/Students'
@@ -14,7 +16,9 @@ import { ResultCards } from './screens/Cards'
 import { Hadiya } from './screens/Hadiya'
 import { ActivityLog } from './screens/Activity'
 import { AuthGate, type Auth } from './screens/Login'
-import { syncConfigured, isLocalOnly, setLocalOnly, onSyncState, syncState, type SyncState } from './sync'
+import { syncConfigured, isLocalOnly, setLocalOnly, onSyncState, syncState, pendingApproval, isPlatformOwner, signOut, type SyncState } from './sync'
+import { OrgRequests } from './screens/Requests'
+import { checkForUpdate, DOWNLOAD_URL, APP_VERSION } from './update'
 import { RangeReport, PerfectList, TeacherReport, GuardianSummary, AuditView } from './screens/Reports'
 
 type Nav = { to: string; ur: string; en: string; roles: string[] }
@@ -103,7 +107,27 @@ function Shell({ org, user, auth, onSwitch, onRefresh }: { org: Row; user: Row; 
   const sync = useSyncState()
   const [menu, setMenu] = useState(false)
   const loc = useLocation()
+  const navigate = useNavigate()
+  const dlg = useDialog()
   useEffect(() => setMenu(false), [loc.pathname])
+  // Android back button: close the menu or a dialog, go back a screen, and on the home screen press twice to exit.
+  const backState = useRef({ menu, path: loc.pathname, last: 0 })
+  backState.current.menu = menu; backState.current.path = loc.pathname
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return
+    const h = CapApp.addListener('backButton', () => {
+      const st = backState.current
+      const overlay = document.querySelector('.overlay') as HTMLElement | null
+      if (overlay) { overlay.click(); return }
+      if (st.menu) { setMenu(false); return }
+      if (st.path !== '/') { window.history.length > 1 ? navigate(-1) : navigate('/'); return }
+      const now = Date.now()
+      if (now - st.last < 2000) { CapApp.exitApp(); return }
+      st.last = now
+      dlg.toast(tr('باہر نکلنے کے لیے دوبارہ دبائیں', 'Press back again to exit', 'اضغط مرة أخرى للخروج'))
+    })
+    return () => { h.then((x) => x.remove()) }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const branches = useQuery(() => all<Row>('select * from branch where organization_id = ? order by name', [session.orgId]), [])
   const openAlerts = useQuery(() => all<{ n: number }>(
     `select count(*) n from alert a where a.status = 'open' and (? is null or a.branch_id = ?)`, [session.branchId, session.branchId]), [session.branchId])
@@ -113,7 +137,12 @@ function Shell({ org, user, auth, onSwitch, onRefresh }: { org: Row; user: Row; 
     window.addEventListener('online', on); window.addEventListener('offline', off)
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off) }
   }, [])
-  const nav = NAV.filter((n) => n.roles.includes(user.role))
+  const [owner, setOwner] = useState(false)
+  useEffect(() => { if (auth && user.role === 'admin') isPlatformOwner().then(setOwner).catch(() => {}) }, [auth, user.role])
+  const pending = !auth && pendingApproval()
+  const [newer, setNewer] = useState<string | null>(null)
+  useEffect(() => { checkForUpdate().then(setNewer) }, [])
+  const nav = [...NAV.filter((n) => n.roles.includes(user.role)), ...(owner ? [{ to: '/requests', ur: 'نئے اداروں کی منظوری', en: 'Approve new organizations', roles: ['admin'] }] : [])]
   const branchName = branches?.find((b) => b.id === session.branchId)?.name
 
   return (
@@ -155,6 +184,7 @@ function Shell({ org, user, auth, onSwitch, onRefresh }: { org: Row; user: Row; 
             )}
             <label className="field"><span className="flabel">{tr('زبان', 'Language')}</span><LangSelect onChange={onRefresh} /></label>
             {auth && <div className="hint" dir="ltr">{auth.email}</div>}
+            <div className="hint" dir="ltr">v{APP_VERSION}</div>
             <button className="ghost" onClick={onSwitch}>{auth ? tr('سائن آؤٹ', 'Sign out') : tr('صارف تبدیل کریں', 'Switch user')}</button>
             {!auth && syncConfigured && isLocalOnly() && user.role === 'admin' && (
               <button className="ghost" onClick={() => { setLocalOnly(false); window.location.reload() }}>{tr('اکاؤنٹ جوڑیں اور آن لائن سنک کریں', 'Link an account and sync online')}</button>
@@ -163,7 +193,21 @@ function Shell({ org, user, auth, onSwitch, onRefresh }: { org: Row; user: Row; 
         </nav>
         {menu && <div className="scrim" onClick={() => setMenu(false)} />}
         <main>
+          {newer && DOWNLOAD_URL && (
+            <div className="banner ok" style={{ marginBottom: 12 }}>
+              {tr(`نیا ورژن (${newer}) دستیاب ہے۔`, `A new version (${newer}) is available.`, `يتوفر إصدار جديد (${newer}).`)}
+              <a className="btn primary sm" href={DOWNLOAD_URL}>{tr('ڈاؤن لوڈ کریں', 'Download', 'تنزيل')}</a>
+            </div>
+          )}
+          {pending && (
+            <div className="banner warn" style={{ marginBottom: 12 }}>
+              {tr('آپ کے ادارے کی آن لائن منظوری کا انتظار ہے۔ تب تک سب کام اسی فون پر محفوظ ہو رہا ہے، اور منظوری ملتے ہی خود آن لائن چلا جائے گا۔', 'Your organization is waiting for online approval. Until then everything is saved on this phone and will go online by itself once approved.', 'مؤسستك بانتظار الموافقة؛ تُحفظ البيانات على الهاتف.')}
+              <button className="ghost sm" onClick={() => window.location.reload()}>{tr('دوبارہ دیکھیں', 'Check again', 'تحقق مجدداً')}</button>
+              <button className="ghost sm" onClick={async () => { await signOut(); window.location.reload() }}>{tr('سائن آؤٹ', 'Sign out', 'خروج')}</button>
+            </div>
+          )}
           <Routes>
+            <Route path="/requests" element={<OrgRequests />} />
             <Route path="/" element={<Today />} />
             <Route path="/attendance/:classId/:date" element={<TakeAttendance />} />
             <Route path="/calendar" element={<CalendarScreen />} />

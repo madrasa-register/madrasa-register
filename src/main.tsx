@@ -16,7 +16,7 @@ import { loadStoredUrduFont } from './fonts'
 
 setLang(lang)
 const root = createRoot(document.getElementById('root')!)
-root.render(<div className="boot">مکتب ایپ کھل رہی ہے…</div>)
+root.render(<div className="boot">مدرسہ رجسٹر کھل رہا ہے…</div>)
 
 Promise.all([openDb(), loadStoredUrduFont()])
   .then(() => {

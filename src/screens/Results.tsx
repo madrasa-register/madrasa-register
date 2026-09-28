@@ -73,7 +73,6 @@ export function ExamResults() {
         )}
         {view === 'ceremony' && (
           <div className="stack">
-            {exam.kind !== 'annual' && <p className="hint">{tr('شیلڈ سالانہ امتحان میں اول، دوم، سوم کو دی جاتی ہے (کتاب ص 83)۔', 'Shields go to annual 1st, 2nd and 3rd (Book p. 83).', 'الدروع للأوائل في الامتحان السنوي.')}</p>}
             {[1, 2, 3].map((p) => {
               const who = sheet.filter((r) => r.es?.position === p)
               return <div key={p} className="podium"><b>{[tr('اول', '1st', 'الأول'), tr('دوم', '2nd', 'الثاني'), tr('سوم', '3rd', 'الثالث')][p - 1]}</b> {who.length ? who.map((r) => `${r.student.name} (${r.es?.total})`).join('، ') : '—'}</div>
@@ -82,7 +81,7 @@ export function ExamResults() {
         )}
         <div className="pp-foot"><span>{tr('ممتحن', 'Examiner')}: {exam.signed_by ?? exam.examiner_name}</span><span>{tr('جماعت کی کیفیت', 'Class remark', 'ملاحظة الفصل')}: {exam.class_remark ?? ''}</span></div>
       </div>
-      <p className="hint">{tr('پوزیشن نتیجہ کارڈ پر نہیں چھپتی؛ صرف اس فہرست اور تقریب کی فہرست میں ہوتی ہے۔ اصل فارم مکتب میں رہے، PDF مقامی معاون کو بھیجیں (کتاب ص 70)۔', 'Position is not printed on the result card, only here and on the ceremony list. The original stays with the maktab; send the PDF to the local mu‘awin (Book p. 70).', 'لا يُطبع المركز على البطاقة.')}</p>
+      <p className="hint">{tr('پوزیشن نتیجہ کارڈ پر نہیں چھپتی۔', 'Positions are not printed on the result card.', 'لا يُطبع الترتيب على بطاقة النتيجة.')}</p>
       {preview && <Card title={tr('PDF پیش منظر', 'PDF preview', 'معاينة PDF')}>{preview.map((src, i) => <img key={i} src={src} className="pdfprev" alt="" />)}</Card>}
     </div>
   )
@@ -123,7 +122,6 @@ export function Prizes() {
   return (
     <div className="stack">
       <h1>{tr('انعامات اور توجہ طلب طلبہ', 'Prizes and follow-up lists', 'الجوائز وقوائم المتابعة')}</h1>
-      <p className="hint">{tr('کتاب ص 83: مکمل حاضری، نماز کی پابندی، اچھا کردار؛ سالانہ اول، دوم، سوم کو شیلڈ۔ معلم کا انعام جب جماعت کے 95% طلبہ ممتاز یا صاحبِ ترتیب ہوں۔', 'Book p. 83: full attendance, regular prayer, good conduct; shields for annual 1st–3rd. Teacher prize when 95% of the class is ممتاز or صاحبِ ترتیب.', 'الكتاب ص 83.')}</p>
       {data.out.length === 0 && <Empty>{tr('کوئی جماعت نہیں', 'No classes', 'لا فصول')}</Empty>}
       {data.out.map(({ c, main, perfect, top, namaz, conduct, teacher, weak }: any) => (
         <Card key={c.id} title={c.name} actions={main ? <Badge kind="muted">{kindName(main.kind)} <Num>{fmtDate(main.date)}</Num></Badge> : <Badge kind="warn">{tr('کوئی حتمی امتحان نہیں', 'No finalized exam', 'لا امتحان معتمد')}</Badge>}>

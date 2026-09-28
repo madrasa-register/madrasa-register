@@ -5,7 +5,7 @@ import { myClasses, classPeriodStats, loadSettings, studentPeriod, waNumber, log
 import { summarize, fmtPercent } from '../engine/attendance'
 import { tr, useQuery, Card, Empty, Num, Badge, Field, Select, useDialog, useAskReason, fmtDate, monthStart, monthEnd, addDays } from '../ui'
 import { ClassMonthPicker } from './Attendance'
-import { AuditList } from './Students'
+import { AuditList, TABLE_NAME } from './Students'
 import { studentLedger } from '../db/hadiyaRepo'
 import { planOn } from '../db/calendarRepo'
 import { cycleRange } from '../engine/calendar'
@@ -77,8 +77,6 @@ export function RangeReport() {
           {win.annual && <button className="ghost sm" onClick={() => { setFrom(win.annual!.from); setTo(win.annual!.to) }}>{tr('سالانہ امتحان کی مدت', 'Annual window')}</button>}
         </div>
       )}
-      <p className="hint">{tr('امتحان کے لحاظ سے مدت (کتاب ص 69): ماہانہ جائزہ = وہی دور، پنج ماہی = پچھلے 5 ماہ، سالانہ = پورا سال۔ دوروں کی درست تاریخیں فیز 2 کے کیلنڈر سے آئیں گی۔',
-        'Window per exam (Book p. 69): monthly = that cycle, five-monthly = preceding 5 months, annual = whole year. Exact cycle dates come from the Phase 2 calendar.')}</p>
       {data && (
         <div className="table-wrap">
           <table className="tbl">
@@ -132,7 +130,6 @@ export function PerfectList() {
         <Select value={period} onChange={(v) => setPeriod(v as any)} options={[{ v: 'month', t: tr('ماہانہ', 'Monthly') }, { v: 'year', t: tr('سالانہ (اب تک)', 'Annual (so far)') }]} />
         {period === 'month' && <input type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} />}
       </div>
-      <p className="hint">{tr('یہ فہرست ماہانہ اور سالانہ انعامات کے لیے ہے (کتاب ص 83)', 'Feeds monthly and annual prizes (Book p. 83)')}</p>
       {data?.map(({ c, list, total }) => (
         <Card key={c.id} title={`${c.name} — ${list.length}/${total}`}>
           {list.length === 0 ? <Empty>{tr('کوئی نہیں', 'None')}</Empty> : (
@@ -229,7 +226,6 @@ export function GuardianSummary() {
     <div className="stack">
       <h1>{tr('سرپرست کو ماہانہ خلاصہ', 'Monthly guardian summary')}</h1>
       <ClassMonthPicker classId={classId} setClassId={setClassId} month={month} setMonth={setMonth} />
-      <p className="hint">{tr('ہر خاندان کو ایک پیغام (بہن بھائی اکٹھے)، حاضری اور ہدیہ کی صورتحال کے ساتھ (کتاب ص 149)۔', 'One message per family (siblings together), with attendance and hadiya status (Book p. 149).')}</p>
       {data?.out.map(({ f, lines, hadiya, sent }) => (
         <Card key={f.id} title={f.guardian_name} actions={<>
           {sent && <Badge kind="ok">{tr('بھیجا گیا', 'Sent')}</Badge>}
@@ -255,9 +251,9 @@ export function AuditView() {
   return (
     <div className="stack">
       <h1>{tr('تبدیلیوں کا ریکارڈ', 'Change history')}</h1>
-      <p className="hint">{tr('کچھ بھی حذف نہیں ہوتا؛ ہر درستی پرانی اور نئی قدر اور وجہ کے ساتھ یہاں محفوظ ہے (رجسٹر ص 52)۔', 'Nothing is deleted; every correction is kept here with old value, new value and reason (Reg. p. 52).')}</p>
+      <p className="hint">{tr('ہر درستی وجہ کے ساتھ یہاں محفوظ ہے۔', 'Every correction is kept here with its reason.', 'كل تصحيح محفوظ هنا مع سببه.')}</p>
       <div className="row wrap">
-        <Select value={table} onChange={setTable} empty={tr('سب', 'All')} options={tables.map((t) => ({ v: t, t }))} />
+        <Select value={table} onChange={setTable} empty={tr('سب', 'All')} options={tables.map((t) => ({ v: t, t: TABLE_NAME[t] ? tr(...TABLE_NAME[t]) : t }))} />
         <Field label={tr('سے', 'From')}><input type="date" value={from.slice(0, 10)} onChange={(e) => setFrom(e.target.value)} /></Field>
       </div>
       <Card><AuditList rows={rows ?? []} /></Card>

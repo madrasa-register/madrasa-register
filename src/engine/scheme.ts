@@ -79,7 +79,7 @@ export function validateScheme(s: SchemeDef): { level: 'error' | 'warn'; msg: st
 
 // ---------- the maktab default template v1 (Reg. p. 28, 55–58; Card) ----------
 const SLOT_NAMES: Record<'A' | 'B' | 'C' | 'D', Record<string, L>> = {
-  A: { nazira: l('ایمانیات و عبادات', 'Beliefs and worship', 'الإيمانيات والعبادات'), hifz: l('تجوید، ایمانیات', 'Tajweed, beliefs', 'التجويد والإيمانيات'), sanawi: l('ترجمہ و تفسیر', 'Translation and tafsir', 'الترجمة والتفسير') },
+  A: { nazira: l('ایمانیات و عبادات', 'Beliefs and worship', 'الإيمانيات والعبادات'), hifz: l('تجوید و ایمانیات', 'Tajweed and beliefs', 'التجويد والإيمانيات'), sanawi: l('ترجمہ و تفسیر', 'Translation and tafsir', 'الترجمة والتفسير') },
   B: { nazira: l('احادیث و مسنون دعائیں', 'Hadith and sunnah duas', 'الأحاديث والأدعية المسنونة'), hifz: l('عبادات', 'Worship', 'العبادات'), sanawi: l('ایمانیات و عبادات', 'Beliefs and worship', 'الإيمانيات والعبادات') },
   C: { nazira: l('سیرت و اخلاق و آداب', 'Seerah, character and manners', 'السيرة والأخلاق والآداب'), hifz: l('احادیث و مسنون دعائیں', 'Hadith and sunnah duas', 'الأحاديث والأدعية المسنونة'), sanawi: l('احادیث و مسنون دعائیں', 'Hadith and sunnah duas', 'الأحاديث والأدعية المسنونة') },
   D: { nazira: l('زبان (عربی، اردو)', 'Language (Arabic, Urdu)', 'اللغة (العربية، الأردية)'), hifz: l('سیرت و اخلاق و آداب', 'Seerah, character and manners', 'السيرة والأخلاق والآداب'), sanawi: l('معاشرت و معاملات', 'Social life and dealings', 'المعاشرة والمعاملات') },

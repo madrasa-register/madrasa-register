@@ -1,18 +1,32 @@
 import { useState } from 'react'
 import { all, session, type Row } from '../db/db'
 import { setupOrganization } from '../db/repo'
-import { tr, Field, Select, useQuery, label, ROLES, useDialog, LangSelect, bumpVersion } from '../ui'
+import { appName, tr, Field, Select, useQuery, label, ROLES, useDialog, LangSelect, bumpVersion } from '../ui'
 import { loadSampleData } from '../sample'
+import { toHijri, addDaysIso } from '../engine/hijri'
+import { startFromShawwal } from '../engine/calendar'
+import { today } from '../db/db'
+
+/** Opening of the current academic year: 6 Shawwal (Umm al-Qura), past the weekly holiday, as in the printed calendars. */
+function suggestYearStart(weeklyHoliday: string): string {
+  const t = today()
+  const br = { weeklyHoliday: weeklyHoliday === 'fri' ? 5 : 0, practiceWeekday: 6 }
+  const h = toHijri(t)
+  let d = startFromShawwal(h.y, 6, br, t)
+  if (!d || d > t) d = startFromShawwal(h.y - 1, 6, br, addDaysIso(t, -300))
+  return d ?? t
+}
+function yearLabelFor(start: string) { const y = Number(start.slice(0, 4)); return `${y}/${String(y + 1).slice(2)}` }
 
 export function SetupWizard({ onStart, onDone }: { onStart: () => void; onDone: (userId: string) => void }) {
   const d = useDialog()
-  const [f, setF] = useState({
-    orgName: 'مکتب تعلیم القرآن الکریم', branchName: '', address: '', weeklyHoliday: 'sun',
-    adminName: '', yearLabel: '2026/27', yearStart: '',
-  })
+  const [f, setF] = useState(() => { const st = suggestYearStart('sun'); return {
+    orgName: '', branchName: '', address: '', weeklyHoliday: 'sun',
+    adminName: '', yearLabel: yearLabelFor(st), yearStart: st,
+  } })
   const [busy, setBusy] = useState(false)
   const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target ? e.target.value : e })
-  const ok = f.orgName.trim() && f.branchName.trim() && f.adminName.trim()
+  const ok = f.orgName.trim() && f.branchName.trim() && f.adminName.trim() && f.yearStart && f.yearLabel.trim()
 
   async function go(sample: boolean) {
     setBusy(true)
@@ -33,22 +47,21 @@ export function SetupWizard({ onStart, onDone }: { onStart: () => void; onDone: 
     <div className="center-page">
       <div className="card narrow">
         <div className="row between">
-          <h1>{tr('مکتب ایپ — پہلی بار ترتیب', 'Maktab App — first-time setup')}</h1>
+          <h1>{appName()} — {tr('پہلی بار ترتیب', 'first-time setup', 'الإعداد الأول')}</h1>
           <div style={{ width: 130 }}><LangSelect onChange={() => setF({ ...f })} /></div>
         </div>
-        <p className="muted">{tr('یہ معلومات صرف ایک بار درکار ہیں۔ سب کچھ اس ڈیوائس پر محفوظ ہوگا اور انٹرنیٹ کے بغیر چلے گا۔',
-          'Needed only once. Everything is saved on this device and works without internet.')}</p>
+        <p className="muted">{tr('یہ معلومات صرف ایک بار درکار ہیں۔', 'Needed only once.')}</p>
         <Field label={tr('ادارے کا نام', 'Organization name')}><input value={f.orgName} onChange={set('orgName')} /></Field>
         <Field label={tr('پہلے مکتب (شاخ) کا نام', 'First branch name')}><input value={f.branchName} onChange={set('branchName')} /></Field>
         <Field label={tr('پتہ', 'Address')}><input value={f.address} onChange={set('address')} /></Field>
-        <Field label={tr('ہفتہ وار تعطیل', 'Weekly holiday')} hint={tr('کتاب ص 56', 'Book p. 56')}>
+        <Field label={tr('ہفتہ وار تعطیل', 'Weekly holiday')}>
           <Select value={f.weeklyHoliday} onChange={set('weeklyHoliday')} options={[{ v: 'sun', t: tr('اتوار', 'Sunday') }, { v: 'fri', t: tr('جمعہ', 'Friday') }]} />
         </Field>
         <Field label={tr('آپ کا نام (ہیڈ آفس ایڈمن)', 'Your name (head office admin)')}><input value={f.adminName} onChange={set('adminName')} /></Field>
         <div className="grid2">
           <Field label={tr('تعلیمی سال', 'Academic year')}><input value={f.yearLabel} onChange={set('yearLabel')} dir="ltr" /></Field>
           <Field label={tr('سال کا آغاز (عیدالفطر کی تعطیلات کے بعد)', 'Year start (after Eid al-Fitr holidays)')}
-            hint={tr('ہجری کیلنڈر فیز 2 میں آئے گا', 'Hijri calendar arrives in Phase 2')}>
+            hint={tr('6 شوال (ام القریٰ)؛ بدل سکتے ہیں', '6 Shawwal (Umm al-Qura); you can change it')}>
             <input type="date" value={f.yearStart} onChange={set('yearStart')} />
           </Field>
         </div>
@@ -78,8 +91,6 @@ export function UserPicker({ org, onPick }: { org: Row; onPick: (id: string) => 
             </button>
           ))}
         </div>
-        <p className="hint">{tr('فیز 1 میں لاگ اِن پاس ورڈ کے بغیر ہے؛ آن لائن سنک (Supabase) کے ساتھ اصل لاگ اِن شامل ہوگا۔',
-          'Phase 1 has no passwords; real login comes with online sync (Supabase).')}</p>
       </div>
     </div>
   )

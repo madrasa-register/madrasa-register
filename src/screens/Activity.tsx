@@ -47,7 +47,6 @@ export function ActivityLog() {
         <h1>{tr('کارگزاری — مکتب کی بہتری کے چھ امور', 'Activity log — six activities', 'سجل الأنشطة الستة')}</h1>
         <Select value={classId} onChange={setClassId} options={(classes ?? []).map((c) => ({ v: c.id, t: c.name }))} />
       </div>
-      <p className="hint">{tr('ہر سرگرمی کے مہینے کیلنڈر سے آتے ہیں؛ تاریخ گزرنے پر اندراج نہ ہو تو "باقی" دکھتا ہے (رجسٹر ص 49)۔', 'The months for each activity come from the calendar; a missing entry after its date shows as overdue (Reg. p. 49).', 'تأتي الأشهر من التقويم؛ يظهر المتأخر بعد تاريخه.')}</p>
       {data?.none && <Empty>{tr('اس تاریخ کے لیے تعلیمی سال مقرر نہیں۔', 'No academic year covers today.', 'لا عام دراسي')}</Empty>}
       {data && !data.none && (
         <div className="table-wrap"><table className="tbl act">

@@ -34,12 +34,21 @@ export const SETTING_DEFS: SettingDef[] = [
   { key: 'alerts.leaveBreaksStreak', kind: 'boolean', default: true, source: 'Phase 1 approval (2026-09-26)' },
   { key: 'phone.countryCode', kind: 'text', default: '92', source: 'For WhatsApp links (03xx → 923xx)' },
   { key: 'hijri.offsetDays', kind: 'number', default: 0, source: 'Spec §5 rule 3 (+1 = months start a day after Umm al-Qura)' },
+  { key: 'calendar.startShawwalDay', kind: 'number', default: 6, source: 'Printed calendars 2023/24–2025/26: the year opens on 6 Shawwal (next day if it is the weekly holiday)' },
+  { key: 'calendar.ceremonyDaysBeforeRamadan', kind: 'number', default: 21, source: 'Printed calendars: the annual ijtima ends in early Sha‘ban, about 21 days before Ramadan' },
   { key: 'calendar.practiceWeekday', kind: 'number', default: 6, source: 'Spec §5 (Saturday in the sample calendars; 0 = Sunday … 6 = Saturday)' },
   { key: 'position.tieStyle', kind: 'choice', choices: ['competition', 'dense'], default: 'competition', source: 'Spec §8.1: equal totals share a position (1,1,3 or 1,1,2 — to confirm)', toConfirm: true },
   { key: 'hadiya.defaultAmount', kind: 'number', default: 500, source: 'Spec §10: minimum Rs 500 (Reg. p. 51, 64)' },
   { key: 'hadiya.shareWithHeadOffice', kind: 'boolean', default: false, source: 'Spec §10 proposal: head office sees totals only if the branch allows' },
   { key: 'prizes.teacherShare', kind: 'number', default: 95, source: 'Spec §8.3' },
-  { key: 'card.instructions', kind: 'text', default: '', source: 'Spec §9: six guardian instructions from the printed card (one per line)' },
+  { key: 'card.instructions', kind: 'text', default: [
+    'یہ کارڈ پنج ماہی اور سالانہ امتحان کے بعد دیا جاتا ہے۔',
+    'کارڈ وصول کرنے کے لیے والد یا سرپرست خود تشریف لائیں۔',
+    'اچھے نتیجے پر بچے کی حوصلہ افزائی کریں؛ کمزوری ہو تو نرمی سے سمجھائیں اور اس کے لیے دعا کریں۔',
+    'بچے کی تعلیم و تربیت کے بارے میں مہینے میں کم از کم ایک بار معلم سے ملاقات کریں۔',
+    'پنج ماہی امتحان کے بعد کارڈ پر دستخط کر کے واپس جمع کرائیں۔',
+    'سالانہ امتحان کے بعد کارڈ اپنے پاس محفوظ رکھیں؛ یہ بچے کا تعلیمی ریکارڈ ہے۔',
+  ].join('\n'), source: 'Spec §9: six guardian instructions from the printed card (one per line)' },
   { key: 'ui.language', kind: 'choice', choices: ['ur', 'ar', 'en'], default: 'ur', source: 'Spec §12' },
 ]
 

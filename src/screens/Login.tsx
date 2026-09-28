@@ -2,11 +2,19 @@
 // or only on this device, and links a login to its maktab.
 import { useEffect, useState } from 'react'
 import { one, db, type Row } from '../db/db'
-import { tr, Field, LangSelect, DialogHost, bumpVersion, useDialog } from '../ui'
+import { appName, tr, Field, LangSelect, DialogHost, bumpVersion, useDialog } from '../ui'
 import {
   syncConfigured, isLocalOnly, setLocalOnly, currentSession, signIn, signUp, signOut,
-  loadMember, claimOrganization, connect, waitForFirstSync, type Member,
+  loadMember, claimOrganization, connect, waitForFirstSync, setPendingApproval, type Member,
 } from '../sync'
+
+/** Links the organization on this phone to the signed-in account (asks the platform owner's approval when needed). */
+async function claimLocal(org: Row): Promise<string> {
+  const admin = await one<Row>(`select * from app_user where organization_id = ? and role = 'admin' and status = 'active' order by created_at limit 1`, [org.id])
+  if (!admin) return 'no-admin'
+  const br = await one<Row>('select * from branch where organization_id = ? order by created_at limit 1', [org.id])
+  return claimOrganization(org.id, admin.id, { orgName: org.name, branchName: br?.name, address: br?.address })
+}
 import { SetupWizard } from './Setup'
 
 export type Auth = { email: string; member: Member; onSignOut: () => void }
@@ -30,7 +38,22 @@ export function AuthGate({ children }: { children: (auth: Auth | null) => React.
     const email = s.user.email ?? ''
     const member = await loadMember(s.user.id)
     const localOrg = await one<Row>('select * from organization limit 1')
+    if (!member && localOrg) {
+      let r = ''
+      try { r = await claimLocal(localOrg) } catch { r = 'offline' }
+      if (r === 'ok' || r === 'already-member') {
+        setPendingApproval(null)
+        const m = await loadMember(s.user.id)
+        if (m) return start(email, m, false)
+      }
+      if (r === 'pending' || r === 'offline') { setPendingApproval(email); return setStage({ k: 'ready', auth: null }) }
+      return setStage({ k: 'noMember', email, localOrg, msg: r === 'rejected'
+        ? tr('آپ کے ادارے کی درخواست منظور نہیں ہوئی۔ ہیڈ آفس سے رابطہ کریں۔', 'Your organization request was not approved. Contact head office.', 'لم تتم الموافقة على طلبك.')
+        : r === 'organization-taken' ? tr('یہ ادارہ پہلے ہی کسی اور اکاؤنٹ سے جڑا ہے۔ ہیڈ آفس سے کہیں کہ «صارفین» میں آپ کو اس ای میل سے رسائی دیں۔', 'This organization is already linked to another account. Ask head office to give your e-mail access under Users.')
+        : r })
+    }
     if (!member) return setStage({ k: 'noMember', email, localOrg })
+    setPendingApproval(null)
     if (localOrg && localOrg.id !== member.organization_id) return setStage({ k: 'otherData', email, member, localOrg })
     await start(email, member, !localOrg)
   }
@@ -58,7 +81,7 @@ function GateScreen({ stage, resolve, setStage, start }: {
   const [, force] = useState(0)
   const header = (
     <div className="row between">
-      <h1>{tr('مکتب ایپ', 'Maktab App')}</h1>
+      <h1>{appName()}</h1>
       <div style={{ width: 130 }}><LangSelect onChange={() => force((x) => x + 1)} /></div>
     </div>
   )
@@ -73,21 +96,14 @@ function GateScreen({ stage, resolve, setStage, start }: {
   if (stage.k === 'login') return <LoginForm header={header} onDone={resolve} />
 
   if (stage.k === 'setup') return (
-    <SetupWizard onStart={() => {}} onDone={async (uid) => {
-      const org = await one<Row>('select * from organization limit 1')
-      try {
-        const r = await claimOrganization(org!.id, uid)
-        if (r !== 'ok') d.toast(r, 'err')
-      } catch (e) { d.toast(String(e), 'err') }
-      resolve()
-    }} />
+    <SetupWizard onStart={() => {}} onDone={(uid) => { try { localStorage.setItem('maktab.user', uid) } catch { /* ignore */ } resolve() }} />
   )
 
   if (stage.k === 'otherData') return (
     <div className="center-page"><div className="card narrow">
       {header}
       <p>{tr(`اس ڈیوائس پر ایک اور ادارے «${stage.localOrg.name}» کا ڈیٹا موجود ہے، جو آپ کے اکاؤنٹ سے مختلف ہے۔`,
-        `This device holds data of another organization «${stage.localOrg.name}», different from your account.`)}</p>
+        `This device holds data of another organization «${stage.localOrg.name}», different from your account.`, `يحتوي هذا الجهاز على بيانات مؤسسة أخرى «${stage.localOrg.name}» مختلفة عن حسابك.`)}</p>
       <p className="muted">{tr('آپ کے ادارے کا ڈیٹا لانے کے لیے اس ڈیوائس کا مقامی ڈیٹا صاف کرنا ہوگا۔ جو ڈیٹا کبھی آن لائن نہیں گیا وہ اس ڈیوائس سے ختم ہو جائے گا۔',
         'To bring your organization\'s data, the local data on this device must be cleared. Data that was never uploaded will be lost from this device.')}</p>
       <div className="row end wrap">
@@ -105,17 +121,7 @@ function GateScreen({ stage, resolve, setStage, start }: {
 
   if (stage.k !== 'noMember') return null
   const s = stage
-  async function link() {
-    const admin = await one<Row>(`select * from app_user where organization_id = ? and role = 'admin' and status = 'active' order by created_at limit 1`, [s.localOrg!.id])
-    if (!admin) return d.toast(tr('اس ڈیوائس پر کوئی ایڈمن صارف نہیں ملا', 'No admin user found on this device'), 'err')
-    try {
-      const r = await claimOrganization(s.localOrg!.id, admin.id)
-      if (r === 'ok' || r === 'already-member') return resolve()
-      setStage({ ...s, msg: r === 'organization-taken'
-        ? tr('یہ ادارہ پہلے ہی کسی اور اکاؤنٹ سے جڑا ہے۔ ہیڈ آفس سے کہیں کہ «صارفین» میں آپ کو اس ای میل سے رسائی دیں۔', 'This organization is already linked to another account. Ask head office to give your e-mail access under Users.')
-        : r })
-    } catch (e) { setStage({ ...s, msg: String(e) }) }
-  }
+  async function link() { resolve() }
   return (
     <div className="center-page"><div className="card narrow">
       {header}
@@ -125,7 +131,7 @@ function GateScreen({ stage, resolve, setStage, start }: {
       <div className="stack">
         {s.localOrg ? (
           <button className="primary" onClick={link}>
-            {tr(`اس ڈیوائس کا ادارہ «${s.localOrg.name}» میرے اکاؤنٹ سے جوڑیں (ہیڈ آفس ایڈمن)`, `Link «${s.localOrg.name}» on this device to my account (head office admin)`)}
+            {tr(`اس ڈیوائس کا ادارہ «${s.localOrg.name}» میرے اکاؤنٹ سے جوڑیں (ہیڈ آفس ایڈمن)`, `Link «${s.localOrg.name}» on this device to my account (head office admin)`, `اربط «${s.localOrg.name}» على هذا الجهاز بحسابي (مدير المكتب الرئيسي)`)}
           </button>
         ) : (
           <button className="primary" onClick={() => setStage({ k: 'setup', email: s.email })}>

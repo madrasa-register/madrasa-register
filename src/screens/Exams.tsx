@@ -116,7 +116,6 @@ export function ExamPage() {
           {final ? <Badge kind="ok">{tr('حتمی', 'Final', 'نهائي')} · <Num>{fmtDate(exam.finalized_at)}</Num></Badge> : <Badge kind="warn"><Num>{done}/{sheet.length}</Num> {tr('مکمل', 'done')}</Badge>}
         </div>
       </div>
-      <p className="hint">{tr('ہر طالب علم کے نمبر فوراً محفوظ ہوتے ہیں؛ آخر میں اکٹھے درج نہیں کیے جاتے (رجسٹر ص 55)۔', "Each student's marks are saved immediately; no batch entry at the end (Reg. p. 55).", 'تُحفظ درجات كل طالب فوراً (السجل ص 55).')}</p>
       <div className="table-wrap">
         <table className="tbl">
           <thead><tr><th>#</th><th>{tr('نام', 'Name')}</th><th>{tr('نمبر', 'Marks')}</th><th>%</th><th>{tr('درجہ', 'Grade', 'التقدير')}</th><th>{tr('کیفیت', 'Status')}</th><th /></tr></thead>
