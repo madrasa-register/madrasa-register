@@ -138,10 +138,11 @@ export const AR: Record<string, string> = {
   'Exams and reviews': 'الامتحانات والتقييمات',
   'Prizes and follow-up': 'الجوائز والمتابعة',
   'Result cards': 'بطاقات النتائج',
-  'Hadiya (fees)': 'الهدية (الرسوم)',
+  'Fees': 'الرسوم',
   'Activity log': 'سجل الأنشطة (الأمور الستة)',
   'Approve new organizations': 'الموافقة على المؤسسات الجديدة',
   'E-mail (for login)': 'البريد الإلكتروني (للدخول)',
   'Mistake': 'خطأ',
   'Good': 'جيد',
+  'Qaida': 'القاعدة',
 }

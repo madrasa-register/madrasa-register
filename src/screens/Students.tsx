@@ -1,3 +1,4 @@
+import { DateInput } from '../DateInput'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { all, get, one, session, today, update, type Row } from '../db/db'
@@ -151,8 +152,8 @@ export function Admission() {
           <Field label={tr('نام', 'Name')}><input value={s.name} onChange={setK(s, setS, 'name')} /></Field>
           <Field label={tr('ولدیت', 'Father’s name')}><input value={s.walidiyat} onChange={setK(s, setS, 'walidiyat')} /></Field>
           <Field label={tr('جنس', 'Gender')}><Select value={s.gender} onChange={setK(s, setS, 'gender')} options={opts(STUDENT_GENDERS)} /></Field>
-          <Field label={tr('تاریخِ پیدائش', 'Date of birth')} hint={s.dob ? `${tr('عمر', 'Age')}: ${ageText(s.dob)}` : undefined}><input type="date" value={s.dob} onChange={setK(s, setS, 'dob')} /></Field>
-          <Field label={tr('تاریخِ داخلہ', 'Admission date')}><input type="date" value={s.admission_date} onChange={setK(s, setS, 'admission_date')} /></Field>
+          <Field label={tr('تاریخِ پیدائش', 'Date of birth')} hint={s.dob ? `${tr('عمر', 'Age')}: ${ageText(s.dob)}` : undefined}><DateInput value={s.dob} onChange={setK(s, setS, 'dob')} /></Field>
+          <Field label={tr('تاریخِ داخلہ', 'Admission date')}><DateInput value={s.admission_date} onChange={setK(s, setS, 'admission_date')} /></Field>
           <Field label={tr('مقدار خواندگی', 'Reading level at admission')}><input value={en.miqdar} onChange={setK(en, setEn, 'miqdar')} /></Field>
         </div>
       </Card>
@@ -293,7 +294,7 @@ export const TABLE_NAME: Record<string, [string, string]> = {
   app_user: ['صارف', 'User'], setting: ['ترتیب', 'Setting'], alert: ['الرٹ', 'Alert'], eligibility_exception: ['امتحان کی اجازت', 'Exam exception'],
   monthly_class_record: ['ماہانہ سبق ریکارڈ', 'Monthly lesson record'], mark_scheme: ['نمبروں کی اسکیم', 'Mark scheme'], exam: ['امتحان', 'Exam'],
   exam_student: ['امتحان کا طالب علم', 'Exam student'], score_entry: ['نمبر', 'Marks'], deduction_event: ['غلطی کا اندراج', 'Mistake'],
-  payment: ['ہدیہ کی وصولی', 'Payment'], fee_plan: ['ہدیہ کی مقدار', 'Fee amount'], fund_entry: ['مٹھی فنڈ', 'Fund'],
+  payment: ['فیس کی وصولی', 'Payment'], fee_plan: ['فیس کی مقدار', 'Fee amount'], fund_entry: ['مٹھی فنڈ', 'Fund'],
   activity_log: ['کارگزاری', 'Activity'], hijri_override: ['ہجری مہینے کی درستی', 'Hijri correction'], organization: ['ادارہ', 'Organization'],
   card_status: ['نتیجہ کارڈ', 'Result card'],
 }
@@ -346,7 +347,7 @@ function WithdrawDlg({ onClose, onSave }: { onClose: () => void; onSave: (date: 
   return (
     <Modal title={tr('طالب علم کو خارج کریں', 'Withdraw student')} onClose={onClose}>
       <p className="hint">{tr('ریکارڈ حذف نہیں ہوگا۔', 'The record is not deleted.', 'لن يُحذف السجل.')}</p>
-      <Field label={tr('تاریخ', 'Date')}><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
+      <Field label={tr('تاریخ', 'Date')}><DateInput value={date} onChange={(e) => setDate(e.target.value)} /></Field>
       <Field label={tr('وجہ (ضروری)', 'Reason (required)')}><textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
       <div className="row end"><button className="ghost" onClick={onClose}>{tr('منسوخ', 'Cancel')}</button><button className="danger" disabled={!reason.trim() || !date} onClick={() => onSave(date, reason)}>{tr('خارج کریں', 'Withdraw')}</button></div>
     </Modal>
@@ -362,7 +363,7 @@ function TransferDlg({ cur, rejoin, onClose, onSave }: { cur?: Row; rejoin?: boo
         <Field label={tr('شعبہ', 'Track')}><Select value={p.track} onChange={(v) => setP({ ...p, track: v })} options={opts(TRACKS)} /></Field>
         <Field label={tr('حصہ', 'Part')}><Select value={p.part} onChange={(v) => setP({ ...p, part: v })} options={opts(PARTS)} /></Field>
       </div>}
-      <Field label={tr('تاریخ (اس دن سے نئی جماعت)', 'Date (new class from this day)')}><input type="date" value={p.date} onChange={(e) => setP({ ...p, date: e.target.value })} /></Field>
+      <Field label={tr('تاریخ (اس دن سے نئی جماعت)', 'Date (new class from this day)')}><DateInput value={p.date} onChange={(e) => setP({ ...p, date: e.target.value })} /></Field>
       <Field label={tr('وجہ (ضروری)', 'Reason (required)')}><textarea rows={2} value={p.reason} onChange={(e) => setP({ ...p, reason: e.target.value })} /></Field>
       <div className="row end"><button className="ghost" onClick={onClose}>{tr('منسوخ', 'Cancel')}</button><button className="primary" disabled={!p.reason.trim() || !p.classId || !p.date} onClick={() => onSave(p)}>{tr('محفوظ کریں', 'Save')}</button></div>
     </Modal>
@@ -378,8 +379,8 @@ function EditStudentDlg({ s, cur, onClose, onSave }: { s: Row; cur?: Row; onClos
         <Field label={tr('نام', 'Name')}><input value={f.name} onChange={k('name')} /></Field>
         <Field label={tr('ولدیت', 'Father')}><input value={f.walidiyat} onChange={k('walidiyat')} /></Field>
         <Field label={tr('جنس', 'Gender')}><Select value={f.gender} onChange={k('gender')} options={opts(STUDENT_GENDERS)} /></Field>
-        <Field label={tr('تاریخِ پیدائش', 'DOB')}><input type="date" value={f.dob} onChange={k('dob')} /></Field>
-        <Field label={tr('تاریخِ داخلہ', 'Admission')}><input type="date" value={f.admission_date} onChange={k('admission_date')} /></Field>
+        <Field label={tr('تاریخِ پیدائش', 'DOB')}><DateInput value={f.dob} onChange={k('dob')} /></Field>
+        <Field label={tr('تاریخِ داخلہ', 'Admission')}><DateInput value={f.admission_date} onChange={k('admission_date')} /></Field>
         <Field label={tr('مقدار خواندگی', 'Reading level')}><input value={miqdar} onChange={(e) => setMiqdar(e.target.value)} /></Field>
         <Field label={tr('نوٹ', 'Notes')}><input value={f.notes} onChange={k('notes')} /></Field>
       </div>

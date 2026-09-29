@@ -28,7 +28,7 @@ const NAV: Nav[] = [
   { to: '/exams', ur: 'امتحانات و جائزے', en: 'Exams and reviews', roles: ['admin', 'nazim', 'teacher', 'examiner'] },
   { to: '/prizes', ur: 'انعامات و توجہ طلب', en: 'Prizes and follow-up', roles: ['admin', 'nazim', 'teacher'] },
   { to: '/cards', ur: 'نتیجہ کارڈ', en: 'Result cards', roles: ['admin', 'nazim', 'teacher'] },
-  { to: '/hadiya', ur: 'ہدیہ (فیس)', en: 'Hadiya (fees)', roles: ['admin', 'nazim', 'teacher'] },
+  { to: '/hadiya', ur: 'فیس', en: 'Fees', roles: ['admin', 'nazim', 'teacher'] },
   { to: '/activity', ur: 'کارگزاری (چھ امور)', en: 'Activity log', roles: ['admin', 'nazim', 'teacher'] },
   { to: '/register', ur: 'ماہانہ رجسٹر', en: 'Monthly register', roles: ['admin', 'nazim', 'teacher'] },
   { to: '/alerts', ur: 'الرٹس', en: 'Alerts', roles: ['admin', 'nazim', 'teacher'] },

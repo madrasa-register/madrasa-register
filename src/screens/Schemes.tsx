@@ -7,14 +7,13 @@ import { tr, useQuery, Card, Num, Badge, Field, Select, useDialog, useAskReason,
 import { lt, kindName } from './Exams'
 
 const METHODS: { v: Method; ur: string; en: string; ar: string }[] = [
-  { v: 'manual', ur: 'نمبر لکھیں (ہر سوال)', en: 'Type marks (per question)', ar: 'إدخال الدرجات' },
+  { v: 'manual', ur: 'ہر سوال کے نمبر لکھیں', en: 'Type marks (per question)', ar: 'إدخال الدرجات' },
   { v: 'outcome', ur: 'درست / کچھ درست / غلط', en: 'Correct / partly / wrong', ar: 'صحيح / جزئي / خطأ' },
-  { v: 'deduction', ur: 'غلطی پر نمبر کٹیں', en: 'Deduct per mistake', ar: 'خصم لكل خطأ' },
+  { v: 'deduction', ur: 'ہر غلطی پر نمبر کٹیں', en: 'Deduct per mistake', ar: 'خصم لكل خطأ' },
   { v: 'band', ur: 'حاضری سے (خودکار)', en: 'From attendance (automatic)', ar: 'من الحضور' },
-  { v: 'category', ur: 'زمرہ منتخب کریں', en: 'Pick a category', ar: 'اختيار فئة' },
-  { v: 'recitation', ur: 'پختگی (قاعدہ / ناظرہ / حفظ)', en: 'Recitation (Qaida / Nazira / Hifz)', ar: 'الإتقان' },
+  { v: 'category', ur: 'درجہ چنیں (جیسے اچھا / مناسب)', en: 'Pick a category', ar: 'اختيار فئة' },
+  { v: 'recitation', ur: 'قرآن / قاعدہ کی پختگی', en: 'Recitation (Qaida / Nazira / Hifz)', ar: 'الإتقان' },
 ]
-const methodName = (m: string) => { const x = METHODS.find((y) => y.v === m); return x ? tr(x.ur, x.en, x.ar) : m }
 const scopeName = (s: string) => ({ org: tr('پورا ادارہ', 'Whole organization'), branch: tr('مکتب', 'Branch'), class: tr('جماعت', 'Class') } as Record<string, string>)[s] ?? s
 
 export function SchemeList() {
@@ -110,20 +109,25 @@ export function SchemeEditor() {
       </Card>
 
       {def.components.map((c, i) => (
-        <Card key={c.key} title={`${lt(c.name)} · ${methodName(c.method)}`} actions={<>
+        <Card key={c.key} title={lt(c.name)} actions={<>
           <Badge kind="muted"><Num>{componentMax(c)}</Num></Badge>
           <button className="ghost sm" onClick={() => move(i, -1)}>↑</button><button className="ghost sm" onClick={() => move(i, 1)}>↓</button>
           <button className="ghost sm" onClick={() => setDef({ ...def, components: def.components.filter((_, j) => j !== i) })}>✕</button>
         </>}>
           <div className="grid2">
-            <Field label={tr('نام (اردو)', 'Name (Urdu)', 'الاسم (أردو)')}><input value={c.name.ur} onChange={(e) => upC(i, { name: { ...c.name, ur: e.target.value } })} /></Field>
-            <Field label={tr('نام (انگریزی)', 'Name (English)', 'الاسم (إنجليزي)')}><input dir="ltr" value={c.name.en} onChange={(e) => upC(i, { name: { ...c.name, en: e.target.value } })} /></Field>
-            <Field label={tr('طریقہ', 'Scoring method', 'طريقة الرصد')}>
+            <Field label={tr('مضمون کا نام', 'Subject name', 'اسم المادة')}><input value={c.name.ur} onChange={(e) => upC(i, { name: { ...c.name, ur: e.target.value } })} /></Field>
+            <Field label={tr('نمبر کیسے دیے جائیں', 'How marks are given', 'طريقة إعطاء الدرجات')}>
               <Select value={c.method} onChange={(v) => upC(i, { method: v as Method, ...(v === 'band' || v === 'category' ? { max: c.max ?? 10 } : {}), ...(v === 'deduction' ? { max: c.max ?? 40, cfg: { ...c.cfg, types: c.cfg?.types ?? [{ key: 'ghalti', name: { ur: 'غلطی', en: 'Mistake' }, points: 1 }] } } : {}), ...(v === 'category' ? { cfg: { ...c.cfg, options: c.cfg?.options ?? { m: [{ key: 'a', name: { ur: 'اچھا', en: 'Good' }, marks: c.max ?? 10 }], f: [{ key: 'a', name: { ur: 'اچھا', en: 'Good' }, marks: c.max ?? 10 }] } } } : {}) })}
                 options={METHODS.filter((m) => m.v !== 'recitation' || c.method === 'recitation').map((m) => ({ v: m.v, t: tr(m.ur, m.en, m.ar) }))} />
             </Field>
-            <Field label={tr('گروپ', 'Group', 'المجموعة')}><Select value={c.group} onChange={(v) => upC(i, { group: v })} options={def.groups.map((g) => ({ v: g.key, t: lt(g.name) }))} /></Field>
           </div>
+          <details><summary className="muted">{tr('مزید (دوسری زبانوں میں نام، حصہ)', 'More (names in other languages, section)', 'المزيد')}</summary>
+            <div className="grid2">
+              <Field label={tr('انگریزی میں نام', 'Name in English', 'الاسم بالإنجليزية')}><input dir="ltr" value={c.name.en} onChange={(e) => upC(i, { name: { ...c.name, en: e.target.value } })} /></Field>
+              <Field label={tr('عربی میں نام', 'Name in Arabic', 'الاسم بالعربية')}><input value={c.name.ar ?? ''} onChange={(e) => upC(i, { name: { ...c.name, ar: e.target.value } })} /></Field>
+              <Field label={tr('پرچے کا حصہ', 'Section of the paper', 'قسم الورقة')}><Select value={c.group} onChange={(v) => upC(i, { group: v })} options={def.groups.map((g) => ({ v: g.key, t: lt(g.name) }))} /></Field>
+            </div>
+          </details>
           <AppliesTo c={c} onChange={(appliesTo) => upC(i, { appliesTo })} />
           {(c.method === 'manual' || c.method === 'outcome') && <Questions c={c} onChange={(questions) => upC(i, { questions })} />}
           {c.method === 'outcome' && (

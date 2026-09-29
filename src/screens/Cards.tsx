@@ -199,14 +199,14 @@ function ResultPanel({ title, p, part }: { title: string; p: Panel; part: string
       <table className="rc-table">
         <thead><tr>
           <th className="rc-sn">نمبر<br />شمار</th>
-          {TRACK_COLS.map(([k, n]) => <th key={k}>{n} <span className="rc-box">{!blank && p.track === k ? '✓' : ''}</span></th>)}
+          {TRACK_COLS.map(([k, n]) => <th key={k}>{n} <span className="rc-box">{!blank && (p.track === 'qaida' ? 'nazira' : p.track) === k ? '✓' : ''}</span></th>)}
           <th className="rc-mx">کل<br />نمبرات</th><th className="rc-ob">حاصل کردہ<br />نمبرات</th>
         </tr></thead>
         <tbody>
           {p.rows.map((r, i) => (
             <tr key={i} className={p.track && !blank ? '' : ''}>
               <td className="rc-sn"><Num>{i + 1}</Num></td>
-              {TRACK_COLS.map(([k]) => <td key={k} className={!blank && p.track === k ? 'rc-mine' : ''}>{ROW_NAMES[k][i]}</td>)}
+              {TRACK_COLS.map(([k]) => <td key={k} className={!blank && (p.track === 'qaida' ? 'nazira' : p.track) === k ? 'rc-mine' : ''}>{ROW_NAMES[k][i]}</td>)}
               <td className="rc-mx"><Num>{r.na ? '—' : r.max}</Num></td>
               <td className="rc-ob"><Num>{r.na ? '—' : blank || r.marks === null ? '' : r.marks}</Num></td>
             </tr>

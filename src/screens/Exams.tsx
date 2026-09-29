@@ -1,3 +1,4 @@
+import { DateInput } from '../DateInput'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { all, get, session, today, ReasonRequired, type Row } from '../db/db'
@@ -6,7 +7,7 @@ import {
   EXAM_KINDS, visibleExams, createExam, examSheet, loadStudentScore, saveRaw, addTap, voidTap, saveStudentMeta,
   finalizeExam, reopenExam, signExam, calendarExamDates, schemeDef, type ExamKind, type StudentScore,
 } from '../db/examRepo'
-import { nameFor, schemeTotal, type Component, type L, type DeductionType } from '../engine/scheme'
+import { nameFor, schemeTotal, type Component, type L } from '../engine/scheme'
 import { recitationQuestions, type Raw, type Outcome } from '../engine/scoring'
 import { GRADES, PRACTICAL, type Practical } from '../engine/grading'
 import { fmtPercent } from '../engine/attendance'
@@ -61,7 +62,7 @@ export function ExamList() {
             <Field label={tr('جماعت', 'Class')}><Select value={f.classId} onChange={(v) => setF({ ...f, classId: v })} options={(classes ?? []).map((c) => ({ v: c.id, t: c.name }))} /></Field>
             <Field label={tr('قسم', 'Kind', 'النوع')}><Select value={f.kind} onChange={(v) => setF({ ...f, kind: v as ExamKind })} options={EXAM_KINDS.map((k) => ({ v: k.v, t: tr(k.ur, k.en, k.ar) }))} /></Field>
             {f.kind === 'makeup' && <MakeupPicker classId={f.classId} value={f.makeupOf} onChange={(v) => setF({ ...f, makeupOf: v })} />}
-            <Field label={tr('تاریخ', 'Date')}><input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></Field>
+            <Field label={tr('تاریخ', 'Date')}><DateInput value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></Field>
             {sug && (
               <div className="row wrap">
                 <span className="muted">{tr('کیلنڈر سے', 'From the calendar', 'من التقويم')}:</span>
@@ -159,13 +160,6 @@ export function ExamPage() {
 }
 
 // ============ Score one student ============
-const LETTERS = 'ا ب ت ث ج ح خ د ذ ر ز س ش ص ض ط ظ ع غ ف ق ک ل م ن و ہ ء ی'.split(' ')
-const QALQALA = 'ق ط ب ج د'.split(' ')
-const RULES: Record<string, string[]> = {
-  'lahn-jali': ['حرکات', 'کھڑی حرکات', 'جزم', 'حروف مدہ', 'تشدید'],
-  'lahn-khafi': ['غنہ', 'ر', 'لفظ اللہ', 'مدات'],
-}
-
 export function ScoreStudent() {
   const { id = '', sid = '' } = useParams()
   const nav = useNavigate()
@@ -179,7 +173,10 @@ export function ScoreStudent() {
     const idx = sheet.findIndex((r) => r.student.id === sid)
     return { exam, s, next: sheet[idx + 1]?.student.id ?? null, prev: sheet[idx - 1]?.student.id ?? null }
   }, [id, sid])
-  const [picker, setPicker] = useState<{ comp: Component; type: DeductionType } | null>(null)
+  // taps shown at once, before the database answers (the list refreshes a moment later)
+  const [opt, setOpt] = useState<{ id: string; comp: string; type: string; q: number | null; voided?: boolean }[]>([])
+  const [seen, setSeen] = useState<any>(null)
+  if (data && data !== seen) { setSeen(data); if (opt.length) setOpt([]) }
   if (!data) return null
   const { exam, s, next, prev } = data
   const final = !!exam.finalized_at
@@ -190,7 +187,11 @@ export function ScoreStudent() {
   }
   const raw = (key: string) => s.comps.find((x) => x.c.key === key)!.raw
   const setRaw = (key: string, patch: Partial<Raw>) => guard(() => saveRaw(exam.id, sid, key, { ...raw(key), ...patch }))
-  const tap = (c: Component, type: string, key: string | null, q: number | null, points: number) => guard(() => addTap(exam.id, sid, c.key, type, key, q, points))
+  const tap = (c: Component, type: string, key: string | null, q: number | null, points: number) => {
+    setOpt((o) => [...o, { id: 'tmp' + Math.random(), comp: c.key, type, q }])
+    return guard(() => addTap(exam.id, sid, c.key, type, key, q, points))
+  }
+  const withOpt = (key: string, taps: any[]) => [...taps, ...opt.filter((t) => t.comp === key)]
 
   return (
     <div className="stack">
@@ -205,7 +206,7 @@ export function ScoreStudent() {
       <label className="check"><input type="checkbox" checked={!!s.es?.absent} disabled={locked} onChange={(e) => guard(() => saveStudentMeta(exam.id, sid, { absent: e.target.checked ? 1 : 0 }))} />
         {tr('امتحان کے دن غیر حاضر (بعد میں امتحان ہوگا؛ پوزیشن اور اضافی نمبر نہیں)', 'Absent on exam day (examined later: no position, no bonus marks)', 'غائب يوم الامتحان')}</label>
 
-      {!s.es?.absent && s.comps.map(({ c, raw: r, taps, r: res }) => (
+      {!s.es?.absent && s.comps.map(({ c, raw: r, taps: savedTaps, r: res }) => { const taps = withOpt(c.key, savedTaps); return (
         <Card key={c.key} title={lt(nameFor(c, s.track))} actions={<Badge kind={res.complete ? 'ok' : 'warn'}><Num>{res.marks}/{res.max}</Num></Badge>}>
           {c.method === 'outcome' && <OutcomeInput c={c} raw={r} disabled={locked} onChange={(p) => setRaw(c.key, p)} />}
           {c.method === 'category' && (
@@ -223,20 +224,22 @@ export function ScoreStudent() {
           )}
           {c.method === 'deduction' && (
             <>
-              <div className="row wrap">{(c.cfg?.types ?? []).map((t) => (
-                <button key={t.key} disabled={locked} className="ded" onClick={() => (t.askKey ? setPicker({ comp: c, type: t }) : tap(c, t.key, null, null, t.points))}>{lt(t.name)} <Num>−{t.points}</Num></button>
-              ))}</div>
-              <TapList taps={taps} counted={res.counted} types={c.cfg?.types ?? []} disabled={locked} onUndo={(tid) => guard(() => voidTap(tid))} />
+              <div className="row wrap">{(c.cfg?.types ?? []).map((t) => {
+                const on = taps.find((x) => x.type === t.key && !x.voided)
+                return <button key={t.key} disabled={locked} className={`ded ${on ? 'on' : ''}`}
+                  onClick={() => (on ? (String(on.id).startsWith('tmp') ? undefined : guard(() => voidTap(on.id))) : tap(c, t.key, null, null, t.points))}>
+                  {on ? '✓ ' : ''}{lt(t.name)} <Num>−{t.points}</Num></button>
+              })}</div>
               <div className="row wrap">
                 {c.cfg?.bonus ? <label className="check"><input type="checkbox" disabled={locked} checked={!!r.bonus} onChange={(e) => setRaw(c.key, { bonus: e.target.checked })} />{tr(`قواعد بتا دیے (+${c.cfg.bonus})`, `Explained the rules (+${c.cfg.bonus})`, `شرح القواعد (+${c.cfg.bonus})`)}{s.es?.makeup || exam.makeup_of ? ` — ${tr('بعد والے امتحان میں شامل نہیں', 'not in a makeup exam', 'لا يُحتسب')}` : ''}</label> : null}
                 {!r.checked && taps.length === 0 && <button className="ghost sm" disabled={locked} onClick={() => setRaw(c.key, { checked: true })}>{tr('کوئی غلطی نہیں — مکمل', 'No mistakes — done', 'لا أخطاء — تم')}</button>}
               </div>
-              <p className="hint">{tr('ایک ہی غلطی (ایک حرف یا قاعدہ) دوبارہ ہو تو ایک ہی بار کٹتی ہے۔', 'The same mistake (letter or rule) counts once.', 'الخطأ نفسه يُحتسب مرة واحدة.')}</p>
+              <p className="hint">{tr('ہر غلطی ایک ہی بار کٹتی ہے؛ دوبارہ دبانے سے واپس ہو جاتی ہے۔', 'Each mistake counts once; tap again to undo.', 'كل خطأ يُحتسب مرة؛ اضغط ثانية للتراجع.')}</p>
             </>
           )}
           {c.method === 'recitation' && <RecitationInput c={c} raw={r} taps={taps} res={res} disabled={locked} onRaw={(p) => setRaw(c.key, p)} onTap={(type, q, pts) => tap(c, type, null, q, pts)} onUndo={(tid) => guard(() => voidTap(tid))} />}
         </Card>
-      ))}
+      ) })}
 
       <StudentMeta s={s} disabled={locked} onSave={(ch, reason) => guard(() => saveStudentMeta(exam.id, sid, ch, reason))} ask={ask} />
 
@@ -246,7 +249,7 @@ export function ScoreStudent() {
         <button className="primary" disabled={!next} onClick={() => nav(`/exams/${exam.id}/s/${next}`)}>{tr('اگلا طالب علم', 'Next student', 'الطالب التالي')}</button>
       </div>
 
-      {picker && <KeyPicker type={picker.type} onClose={() => setPicker(null)} onPick={(k) => { tap(picker.comp, picker.type.key, k, null, picker.type.points); setPicker(null) }} />}
+      <TajweedGuide />
     </div>
   )
 }
@@ -276,32 +279,20 @@ function OutcomeInput({ c, raw, disabled, onChange }: { c: Component; raw: Raw; 
   )
 }
 
-function TapList({ taps, counted, types, disabled, onUndo }: { taps: { id: string; type: string; key?: string | null; voided?: boolean; q?: number | null }[]; counted?: boolean[]; types: DeductionType[]; disabled: boolean; onUndo: (id: string) => void }) {
-  if (!taps.length) return null
-  const last = [...taps].reverse().find((t) => !t.voided)
+/** Short reference for examiners; kept closed so it does not get in the way during the exam. */
+function TajweedGuide() {
+  const items: [string, string][] = [
+    [tr('مخرج', 'Makhraj', 'المخرج'), tr('حرف اپنے صحیح مخرج سے ادا نہ ہو، جیسے ث کو س یا ض کو د پڑھنا۔', 'A letter not pronounced from its proper point, e.g. ث read as س.', 'عدم إخراج الحرف من مخرجه.')],
+    [tr('وقف', 'Waqf', 'الوقف'), tr('غلط جگہ رکنا، یا رک کر اس طرح شروع کرنا کہ معنی بگڑ جائے۔', 'Stopping in the wrong place, or resuming so the meaning is spoiled.', 'الوقف في غير موضعه.')],
+    [tr('لحن جلی', 'Lahn jali', 'اللحن الجلي'), tr('کھلی غلطی جس سے لفظ یا معنی بدل جائے، جیسے حرف یا حرکت بدل دینا۔', 'An obvious error that changes a word or its meaning, e.g. a letter or vowel changed.', 'خطأ ظاهر يغيّر اللفظ أو المعنى.')],
+    [tr('لحن خفی', 'Lahn khafi', 'اللحن الخفي'), tr('چھپی غلطی جو تجوید کے قواعد (غنہ، مد، اخفاء، ادغام وغیرہ) کے خلاف ہو مگر معنی نہ بدلے۔', 'A hidden error against the tajweed rules (ghunnah, madd, ikhfa, idgham…) that does not change the meaning.', 'خطأ خفي في أحكام التجويد لا يغيّر المعنى.')],
+    [tr('قلقلہ', 'Qalqalah', 'القلقلة'), tr('ق ط ب ج د ساکن ہوں تو ان میں قلقلہ (ہلکا جھٹکا) ادا نہ کرنا۔', 'Not giving the echo (qalqalah) on a sakin ق ط ب ج د.', 'عدم إظهار القلقلة في ق ط ب ج د الساكنة.')],
+  ]
   return (
-    <div className="row wrap taps">
-      {taps.map((t, i) => {
-        const def = types.find((x) => x.key === t.type)
-        const ok = counted ? counted[i] : !t.voided
-        return <span key={t.id} className={`tapchip ${t.voided ? 'void' : ok ? '' : 'zero'}`}>{def ? lt(def.name) : t.type}{t.key ? ` ${t.key}` : ''} <Num>{t.voided ? '×' : ok ? `−${def?.points ?? 0}` : '0'}</Num></span>
-      })}
-      {last && <button className="ghost sm" disabled={disabled} onClick={() => onUndo(last.id)}>{tr('آخری واپس', 'Undo last', 'تراجع')}</button>}
-    </div>
-  )
-}
-
-function KeyPicker({ type, onClose, onPick }: { type: DeductionType; onClose: () => void; onPick: (k: string) => void }) {
-  const [txt, setTxt] = useState('')
-  const keys = type.askKey === 'letter' ? (type.key === 'qalqala' ? QALQALA : LETTERS) : RULES[type.key] ?? []
-  return (
-    <div className="overlay" onClick={onClose}>
-      <div className="dialog" onClick={(e) => e.stopPropagation()}>
-        <h3>{lt(type.name)} — {type.askKey === 'letter' ? tr('کون سا حرف؟', 'Which letter?', 'أي حرف؟') : tr('کون سا قاعدہ؟', 'Which rule?', 'أي قاعدة؟')}</h3>
-        <div className="keygrid">{keys.map((k) => <button key={k} className="keyb" onClick={() => onPick(k)}>{k}</button>)}</div>
-        <div className="row"><input value={txt} placeholder={tr('یا لکھیں (مثلاً آیت / مقام)', 'or type (e.g. verse / place)', 'أو اكتب')} onChange={(e) => setTxt(e.target.value)} /><button className="primary" disabled={!txt.trim()} onClick={() => onPick(txt.trim())}>{tr('ٹھیک ہے', 'OK')}</button></div>
-      </div>
-    </div>
+    <details className="card">
+      <summary><b>{tr('تجوید کی غلطیوں کی وضاحت (مطالعہ کے لیے)', 'Tajweed mistakes explained (for study)', 'شرح أخطاء التجويد (للمطالعة)')}</b></summary>
+      <dl className="guide">{items.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
+    </details>
   )
 }
 
@@ -319,7 +310,7 @@ function RecitationInput({ c, raw, taps, res, disabled, onRaw, onTap, onUndo }: 
       {v && v.fixed.length > 0 && (
         <div className="row wrap">{v.fixed.map((f) => {
           const ok = raw.fixed?.[f.key] !== false
-          return <button key={f.key} disabled={disabled} className={`opt ${ok ? 'on' : 'o-w on'}`} onClick={() => onRaw({ fixed: { ...(raw.fixed ?? {}), [f.key]: !ok } })}>{lt(f.name)} {ok ? '✓' : '✗'} <Num>{ok ? f.marks : 0}/{f.marks}</Num></button>
+          return <button key={f.key} disabled={disabled} className={`ded ${ok ? '' : 'on'}`} onClick={() => onRaw({ fixed: { ...(raw.fixed ?? {}), [f.key]: !ok } })}>{ok ? '' : '✓ '}{lt(f.name)} {tr('نہیں پڑھا', 'not read', 'لم يُقرأ')} <Num>−{f.marks}</Num></button>
         })}</div>
       )}
       {v && qs.map((q, i) => {
@@ -329,7 +320,7 @@ function RecitationInput({ c, raw, taps, res, disabled, onRaw, onTap, onUndo }: 
         const qName = v.questions?.[i]?.name
         return (
           <div key={i} className="qbox">
-            <div className="row between"><b>{qName ? lt(qName) : `${tr('مقام', 'Passage', 'المقطع')} ${i + 1}`}</b><Num>{line?.marks ?? q.marks}/{q.marks}</Num></div>
+            <div className="row between"><b>{qName ? lt(qName) : `${tr('سوال', 'Question', 'السؤال')} ${i + 1}`}</b><Num>{line?.marks ?? q.marks}/{q.marks}</Num></div>
             <div className="row wrap">
               {v.deductions.map((dd) => {
                 const n = qTaps.filter((t) => !t.voided && t.type === dd.key).length

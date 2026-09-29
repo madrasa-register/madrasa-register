@@ -185,7 +185,18 @@ export async function addTap(examId: string, studentId: string, compKey: string,
   const exam = await assertOpen(examId, null)
   await ensureES(exam, studentId)
   await insert('deduction_event', { exam_id: examId, student_id: studentId, component_key: compKey, type, key, q, points, voided: 0 }, { branchId: exam.branch_id, audit: false })
-  await recompute(examId, studentId)
+  laterRecompute(examId, studentId)
+}
+// Taps come quickly one after another; the stored totals are refreshed once the examiner pauses.
+const timers = new Map<string, ReturnType<typeof setTimeout>>()
+async function flushRecomputes() {
+  const ks = [...timers.keys()]
+  for (const k of ks) { clearTimeout(timers.get(k)); timers.delete(k); const [e, st] = k.split('|'); await recompute(e, st) }
+}
+function laterRecompute(examId: string, studentId: string) {
+  const k = examId + '|' + studentId
+  clearTimeout(timers.get(k))
+  timers.set(k, setTimeout(() => { timers.delete(k); recompute(examId, studentId).catch((e) => console.error(e)) }, 700))
 }
 /** Undo a tap: the row stays, marked void (nothing is deleted). */
 export async function voidTap(tapId: string) {
@@ -193,7 +204,7 @@ export async function voidTap(tapId: string) {
   if (!t) return
   await assertOpen(t.exam_id, null)
   await update('deduction_event', tapId, { voided: 1 }, 'undo', { requireReason: false, action: 'undo' })
-  await recompute(t.exam_id, t.student_id)
+  laterRecompute(t.exam_id, t.student_id)
 }
 export async function saveStudentMeta(examId: string, studentId: string, ch: Record<string, any>, reason: string | null = null) {
   const exam = await assertOpen(examId, reason)
@@ -227,6 +238,7 @@ export async function examSheet(exam: Row) {
 
 /** Finalize (nazim): all students scored or marked absent; positions are then computed (§3, §8.1). */
 export async function finalizeExam(examId: string) {
+  await flushRecomputes()
   const exam = (await get('exam', examId))!
   const sheet = await examSheet(exam)
   const missing = sheet.filter((r) => !r.es || (!r.es.complete && !r.es.absent))

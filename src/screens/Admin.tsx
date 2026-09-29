@@ -1,3 +1,4 @@
+import { DateInput } from '../DateInput'
 import { addMember, syncConfigured, isLocalOnly } from '../sync'
 import { useState, type ReactNode } from 'react'
 import { all, insert, update, session, today, type Row } from '../db/db'
@@ -71,6 +72,8 @@ function Crud({ title, table, fields, rows, extraActions, onCreated, defaults, b
                 <Field key={f.key} label={tr(f.ur, f.en) + (f.required ? ' *' : '')}>
                   {f.options ? (
                     <Select value={editing.data[f.key] ?? ''} empty="" onChange={(v) => setEditing({ ...editing, data: { ...editing.data, [f.key]: v } })} options={f.options()} />
+                  ) : f.type === 'date' ? (
+                    <DateInput value={editing.data[f.key] ?? ''} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, [f.key]: e.target.value } })} />
                   ) : (
                     <input type={f.type === 'tel' ? 'tel' : f.type ?? 'text'} dir={['tel', 'number', 'time', 'date'].includes(f.type ?? '') ? 'ltr' : undefined}
                       value={editing.data[f.key] ?? ''} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, [f.key]: e.target.value } })} />
@@ -199,7 +202,7 @@ export function Classes() {
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <h3>{tr('معلم مقرر کریں', 'Assign teacher')} — {assign.name}</h3>
             <Field label={tr('معلم', 'Teacher')}><Select value={tid} onChange={setTid} empty="" options={(teachers ?? []).map((t) => ({ v: t.id, t: t.name }))} /></Field>
-            <Field label={tr('کب سے', 'From')}><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
+            <Field label={tr('کب سے', 'From')}><DateInput value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
             <p className="hint">{tr('پچھلے معلم کی تاریخ محفوظ رہے گی', 'The previous teacher’s period is kept')}</p>
             <div className="row end">
               <button className="ghost" onClick={() => setAssign(null)}>{tr('منسوخ', 'Cancel')}</button>
@@ -261,8 +264,8 @@ const SETTING_LABEL: Record<string, [string, string]> = {
   'calendar.ceremonyDaysBeforeRamadan': ['سالانہ اجتماع رمضان سے کتنے دن پہلے ختم ہو', 'Days before Ramadan that the annual ijtima ends'],
   'calendar.practiceWeekday': ['عملی مشق کا دن (0 = اتوار … 6 = ہفتہ)', 'Practice weekday (0 = Sunday … 6 = Saturday)'],
   'position.tieStyle': ['برابر نمبروں پر پوزیشن', 'Position for equal totals'],
-  'hadiya.defaultAmount': ['ماہانہ ہدیہ کی عام مقدار (روپے)', 'Default monthly hadiya (Rs)'],
-  'hadiya.shareWithHeadOffice': ['ہیڈ آفس کو ہدیہ کی تفصیل دکھائیں', 'Show hadiya details to head office'],
+  'hadiya.defaultAmount': ['ماہانہ فیس کی عام مقدار (روپے)', 'Default monthly fee (Rs)'],
+  'hadiya.shareWithHeadOffice': ['ہیڈ آفس کو فیس کی تفصیل دکھائیں', 'Show fee details to head office'],
   'prizes.teacherShare': ['معلم کے انعام کے لیے ممتاز / صاحبِ ترتیب طلبہ %', 'Teacher prize: % of class ممتاز or صاحبِ ترتیب'],
   'card.instructions': ['نتیجہ کارڈ پر سرپرست کے لیے چھ ہدایات', 'Six guardian instructions on the result card'],
 }

@@ -1,3 +1,4 @@
+import { DateInput } from '../DateInput'
 import { Cover } from './Cover'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -49,7 +50,7 @@ export function Today() {
         <h1>{tr('آج', 'Today')} · <Num>{fmtDate(date)}</Num> · {dayName(date)}</h1>
         <div className="row">
           <button className="ghost" onClick={() => setDate(addDays(date, -1))}>{tr('پچھلا دن', 'Prev day')}</button>
-          <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />
+          <DateInput value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />
           <button className="ghost" onClick={() => setDate(addDays(date, 1))}>{tr('اگلا دن', 'Next day')}</button>
         </div>
       </div>
@@ -444,7 +445,7 @@ export function TeacherTime() {
     <div className="stack">
       <div className="row between wrap">
         <h1>{tr('اساتذہ کی حاضری', 'Teacher attendance')}</h1>
-        <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />
+        <DateInput value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />
       </div>
       <Card>
         {rows?.length === 0 && <Empty>{tr('کوئی معلم نہیں', 'No teachers')}</Empty>}

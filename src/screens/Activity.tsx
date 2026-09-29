@@ -1,3 +1,4 @@
+import { DateInput } from '../DateInput'
 import { useState } from 'react'
 import { all, get, insert, update, detId, today, type Row } from '../db/db'
 import { myClasses } from '../db/repo'
@@ -72,7 +73,7 @@ export function ActivityLog() {
             <button className={`opt ${f.done ? 'on' : ''}`} onClick={() => setF({ ...f, done: 1 })}>✓ {tr('ہو گیا', 'Done', 'تم')}</button>
             <button className={`opt o-w ${!f.done ? 'on' : ''}`} onClick={() => setF({ ...f, done: 0 })}>☒ {tr('نہیں ہوا', 'Not done', 'لم يتم')}</button>
           </div>
-          <Field label={tr('تاریخ', 'Date')}><input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></Field>
+          <Field label={tr('تاریخ', 'Date')}><DateInput value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></Field>
           {meta.extra === 'counts' && <div className="grid2">
             <Field label={tr('کل مدعو', 'Total invited', 'المدعوون')}><input type="number" dir="ltr" value={f.invited} onChange={(e) => setF({ ...f, invited: e.target.value })} /></Field>
             <Field label={tr('کل شریک', 'Total attended', 'الحاضرون')}><input type="number" dir="ltr" value={f.attended} onChange={(e) => setF({ ...f, attended: e.target.value })} /></Field>

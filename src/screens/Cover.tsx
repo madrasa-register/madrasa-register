@@ -3,13 +3,15 @@ import { Link } from 'react-router-dom'
 import { get, session, type Row } from '../db/db'
 import { tr, useQuery, label, ROLES, appName } from '../ui'
 
+// order follows the paper register: admission index, monthly attendance, lesson record, fees, then the rest
 const TILES: { to: string; ur: string; en: string; ar: string; icon: string }[] = [
+  { to: '/students', ur: 'داخلہ', en: 'Admission', ar: 'القبول', icon: '👥' },
+  { to: '/register', ur: 'حاضری', en: 'Attendance', ar: 'الحضور', icon: '📖' },
+  { to: '/class-record', ur: 'سبق ریکارڈ', en: 'Lesson record', ar: 'سجل الدرس', icon: '📋' },
+  { to: '/hadiya', ur: 'فیس', en: 'Fees', ar: 'الرسوم', icon: '💰' },
   { to: '/calendar', ur: 'تعلیمی کیلنڈر', en: 'Calendar', ar: 'التقويم', icon: '📅' },
   { to: '/exams', ur: 'امتحانات', en: 'Exams', ar: 'الامتحانات', icon: '📝' },
   { to: '/cards', ur: 'نتیجہ کارڈ', en: 'Result cards', ar: 'البطاقات', icon: '🎓' },
-  { to: '/register', ur: 'ماہانہ رجسٹر', en: 'Register', ar: 'السجل', icon: '📖' },
-  { to: '/students', ur: 'طلبہ', en: 'Students', ar: 'الطلاب', icon: '👥' },
-  { to: '/hadiya', ur: 'ہدیہ', en: 'Hadiya', ar: 'الهدية', icon: '💰' },
   { to: '/activity', ur: 'چھ امور', en: 'Activities', ar: 'الأمور الستة', icon: '✅' },
   { to: '/prizes', ur: 'انعامات', en: 'Prizes', ar: 'الجوائز', icon: '🏆' },
 ]

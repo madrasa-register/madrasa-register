@@ -139,11 +139,11 @@ export const DEFAULT_TEMPLATE: SchemeDef = {
       cfg: {
         bonus: 2,
         types: [
-          { key: 'makhraj', name: l('مخرج', 'Makhraj (letter)', 'المخرج'), points: 3, oncePerKey: true, askKey: 'letter' },
-          { key: 'waqf', name: l('وقف کی غلطی', 'Waqf', 'الوقف'), points: 3, oncePerKey: true, askKey: 'rule' },
-          { key: 'lahn-jali', name: l('لحن جلی', 'Lahn jali', 'اللحن الجلي'), points: 3, oncePerKey: true, askKey: 'rule' },
-          { key: 'qalqala', name: l('قلقلہ کی غلطی', 'Qalqalah', 'القلقلة'), points: 1, oncePerKey: true, askKey: 'letter' },
-          { key: 'lahn-khafi', name: l('لحن خفی', 'Lahn khafi', 'اللحن الخفي'), points: 1, oncePerKey: true, askKey: 'rule' },
+          { key: 'makhraj', name: l('مخرج', 'Makhraj (letter)', 'المخرج'), points: 3, oncePerKey: true },
+          { key: 'waqf', name: l('وقف کی غلطی', 'Waqf', 'الوقف'), points: 3, oncePerKey: true },
+          { key: 'lahn-jali', name: l('لحن جلی', 'Lahn jali', 'اللحن الجلي'), points: 3, oncePerKey: true },
+          { key: 'qalqala', name: l('قلقلہ کی غلطی', 'Qalqalah', 'القلقلة'), points: 1, oncePerKey: true },
+          { key: 'lahn-khafi', name: l('لحن خفی', 'Lahn khafi', 'اللحن الخفي'), points: 1, oncePerKey: true },
         ],
       },
     },
@@ -199,4 +199,4 @@ export function hifzQuestions(v: RecitationVariant, paras: number, max: number) 
 export const nameFor = (c: Component, track: string) => c.names?.[track] ?? c.name
 
 /** Default recitation variant from track and part. */
-export const defaultVariant = (track: string, part: string) => (track === 'hifz' ? 'hifz' : part === 'ibtidaiya' ? 'qaida' : 'nazira')
+export const defaultVariant = (track: string, part: string) => (track === 'hifz' ? 'hifz' : track === 'qaida' || part === 'ibtidaiya' ? 'qaida' : 'nazira')

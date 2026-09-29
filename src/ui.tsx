@@ -34,6 +34,7 @@ export function LangSelect({ onChange }: { onChange?: () => void }) {
 
 // ---------- vocab from the spec ----------
 export const TRACKS = [
+  { v: 'qaida', ur: 'قاعدہ', en: 'Qaida' },
   { v: 'nazira', ur: 'ناظرہ', en: 'Nazira' },
   { v: 'hifz', ur: 'حفظ', en: 'Hifz' },
   { v: 'sanawi', ur: 'ثانوی', en: 'Secondary' },

@@ -1,3 +1,4 @@
+import { DateInput } from '../DateInput'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { all, one, insert, session, today, type Row } from '../db/db'
@@ -61,8 +62,8 @@ export function RangeReport() {
       <h1>{tr('حاضری فیصد، نمبر اور امتحان کی اہلیت', 'Attendance %, marks and exam eligibility')}</h1>
       <div className="row wrap">
         <Field label={tr('جماعت', 'Class')}><Select value={classId} onChange={setClassId} options={(classes ?? []).map((c) => ({ v: c.id, t: c.name }))} /></Field>
-        <Field label={tr('سے', 'From')}><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
-        <Field label={tr('تک', 'To')}><input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
+        <Field label={tr('سے', 'From')}><DateInput value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
+        <Field label={tr('تک', 'To')}><DateInput value={to} onChange={(e) => setTo(e.target.value)} /></Field>
       </div>
       <div className="row wrap">
         <button className="ghost sm" onClick={() => { setFrom(monthStart(today().slice(0, 7))); setTo(today()) }}>{tr('یہ مہینہ', 'This month')}</button>
@@ -213,7 +214,7 @@ export function GuardianSummary() {
   function body(f: Row, lines: { k: Row; s: ReturnType<typeof summarize> }[], hadiya: { name: string; cell: any }[] = []) {
     const parts = lines.map(({ k, s }) => `${k.name}: ایامِ تعلیم ${s.teachingDays}، حاضر ${s.present}، غیر حاضر ${s.notPresent}`)
     const h = hadiya.filter((x) => x.cell && x.cell.status !== 'none').map((x) => `${x.name}: ${x.cell.status === 'paid' ? 'ادا' : x.cell.status === 'exempt' ? 'معاف' : `باقی ${x.cell.due - x.cell.paid} روپے`}`)
-    return `السلام علیکم محترم ${f.guardian_name}،\nماہ ${month} کی حاضری:\n${parts.join('\n')}${h.length ? `\nہدیہ:\n${h.join('\n')}` : ''}`
+    return `السلام علیکم محترم ${f.guardian_name}،\nماہ ${month} کی حاضری:\n${parts.join('\n')}${h.length ? `\nفیس:\n${h.join('\n')}` : ''}`
   }
   async function send(f: Row, lines: any[], hadiya: any[], channel: 'whatsapp' | 'sms') {
     const b = body(f, lines, hadiya)
@@ -254,7 +255,7 @@ export function AuditView() {
       <p className="hint">{tr('ہر درستی وجہ کے ساتھ یہاں محفوظ ہے۔', 'Every correction is kept here with its reason.', 'كل تصحيح محفوظ هنا مع سببه.')}</p>
       <div className="row wrap">
         <Select value={table} onChange={setTable} empty={tr('سب', 'All')} options={tables.map((t) => ({ v: t, t: TABLE_NAME[t] ? tr(...TABLE_NAME[t]) : t }))} />
-        <Field label={tr('سے', 'From')}><input type="date" value={from.slice(0, 10)} onChange={(e) => setFrom(e.target.value)} /></Field>
+        <Field label={tr('سے', 'From')}><DateInput value={from.slice(0, 10)} onChange={(e) => setFrom(e.target.value)} /></Field>
       </div>
       <Card><AuditList rows={rows ?? []} /></Card>
       <p className="hint"><Num>{fmtDate(today())}</Num></p>

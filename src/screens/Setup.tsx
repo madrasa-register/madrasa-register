@@ -1,3 +1,4 @@
+import { DateInput } from '../DateInput'
 import { useState } from 'react'
 import { all, session, type Row } from '../db/db'
 import { setupOrganization } from '../db/repo'
@@ -62,7 +63,7 @@ export function SetupWizard({ onStart, onDone }: { onStart: () => void; onDone: 
           <Field label={tr('تعلیمی سال', 'Academic year')}><input value={f.yearLabel} onChange={set('yearLabel')} dir="ltr" /></Field>
           <Field label={tr('سال کا آغاز (عیدالفطر کی تعطیلات کے بعد)', 'Year start (after Eid al-Fitr holidays)')}
             hint={tr('6 شوال (ام القریٰ)؛ بدل سکتے ہیں', '6 Shawwal (Umm al-Qura); you can change it')}>
-            <input type="date" value={f.yearStart} onChange={set('yearStart')} />
+            <DateInput value={f.yearStart} onChange={set('yearStart')} />
           </Field>
         </div>
         {busy && <div className="banner">{tr('ڈیٹا تیار ہو رہا ہے…', 'Preparing data…')}</div>}

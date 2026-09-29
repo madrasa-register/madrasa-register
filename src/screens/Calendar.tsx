@@ -1,3 +1,4 @@
+import { DateInput } from '../DateInput'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { all, one, session, today, type Row } from '../db/db'
@@ -167,7 +168,7 @@ function DayDetail({ plan, date, canEdit, onMove }: { plan: Plan; date: string; 
       {canEdit && (
         <div className="row wrap" style={{ marginTop: 6 }}>
           <span>{tr('مشورے سے یہ دن اس تاریخ پر منتقل کریں:', 'Move this day (by mashwara) to:', 'انقل هذا اليوم (بالمشورة) إلى:')}</span>
-          <input type="date" value={to} min={plan.days[0].date} max={plan.days[plan.days.length - 1].date} onChange={(e) => setTo(e.target.value)} style={{ width: 'auto' }} />
+          <DateInput value={to} min={plan.days[0].date} max={plan.days[plan.days.length - 1].date} onChange={(e) => setTo(e.target.value)} style={{ width: 'auto' }} />
           {target && <span className="muted">{tr('وہاں اب', 'There now', 'هناك الآن')}: <span className={`chip t-${target.type}`}>{dayName(target.type)}</span> — {tr('دونوں دن آپس میں بدل جائیں گے', 'the two days swap', 'يتبادل اليومان')}</span>}
           <button className="primary sm" disabled={!target || to === date} onClick={async () => { const r = await ask(tr('منتقلی کی وجہ (مشورہ)', 'Reason for the move (mashwara)', 'سبب النقل')); if (r) await onMove(to, r) }}>{tr('منتقل کریں', 'Move', 'انقل')}</button>
         </div>
@@ -278,15 +279,15 @@ export function CalendarSettings() {
       <Card title={tr('سال کا آغاز اور اختتام', 'Start and end of the year', 'بداية العام ونهايته')}>
         <div className="grid2">
           <Field label={tr('عیدالفطر کی تعطیلات (پچھلے سال) کا آخری دن', 'Last day of the previous Eid al-Fitr holidays', 'آخر يوم في عطلة عيد الفطر السابقة')}>
-            <input type="date" onChange={(e) => e.target.value && set({ start: suggestStart(e.target.value, data.branch) })} />
+            <DateInput onChange={(e) => e.target.value && set({ start: suggestStart(e.target.value, data.branch) })} />
           </Field>
           <Field label={tr('افتتاحِ سال', 'Year opening', 'افتتاح العام')} hint={hijriText(toHijri(cfg.start, data.hijri.offset, data.hijri.overrides))}>
-            <input type="date" value={cfg.start} onChange={(e) => e.target.value && set({ start: e.target.value })} />
+            <DateInput value={cfg.start} onChange={(e) => e.target.value && set({ start: e.target.value })} />
             {st && <button className="ghost sm" onClick={() => { const hy = toHijri(cfg.start, data.hijri.offset, data.hijri.overrides).y; const hs = toHijri(cfg.start, data.hijri.offset, data.hijri.overrides); const y = hs.m >= 10 ? hy : hy - 1; const d0 = startFromShawwal(y, Number(st['calendar.startShawwalDay']), data.branch, cfg.start, data.hijri.offset, data.hijri.overrides); if (d0) set({ start: d0 }) }}>
               {tr(`${st['calendar.startShawwalDay']} شوال کے مطابق رکھیں`, `Set to ${st['calendar.startShawwalDay']} Shawwal`, `اضبط على ${st['calendar.startShawwalDay']} شوال`)}</button>}
           </Field>
-          <Field label={tr('عیدالفطر کی تعطیلات: سے', 'Eid al-Fitr holidays: from', 'عطلة عيد الفطر: من')}><input type="date" value={cfg.eidFitr.from} onChange={(e) => set({ eidFitr: { ...cfg.eidFitr, from: e.target.value } })} /></Field>
-          <Field label={tr('تک', 'To')}><input type="date" value={cfg.eidFitr.to} onChange={(e) => set({ eidFitr: { ...cfg.eidFitr, to: e.target.value } })} /></Field>
+          <Field label={tr('عیدالفطر کی تعطیلات: سے', 'Eid al-Fitr holidays: from', 'عطلة عيد الفطر: من')}><DateInput value={cfg.eidFitr.from} onChange={(e) => set({ eidFitr: { ...cfg.eidFitr, from: e.target.value } })} /></Field>
+          <Field label={tr('تک', 'To')}><DateInput value={cfg.eidFitr.to} onChange={(e) => set({ eidFitr: { ...cfg.eidFitr, to: e.target.value } })} /></Field>
         </div>
       </Card>
 
@@ -298,8 +299,8 @@ export function CalendarSettings() {
           const a = preview.byDate.get(m.from)
           return (
             <div key={i} className="row wrap">
-              <Field label={tr('یہ دن', 'This day', 'هذا اليوم')}><input type="date" value={m.from} onChange={(e) => upd({ from: e.target.value })} /></Field>
-              <Field label={tr('اس دن سے بدلیں', 'Swap with', 'مبادلة مع')}><input type="date" value={m.to} onChange={(e) => upd({ to: e.target.value })} /></Field>
+              <Field label={tr('یہ دن', 'This day', 'هذا اليوم')}><DateInput value={m.from} onChange={(e) => upd({ from: e.target.value })} /></Field>
+              <Field label={tr('اس دن سے بدلیں', 'Swap with', 'مبادلة مع')}><DateInput value={m.to} onChange={(e) => upd({ to: e.target.value })} /></Field>
               <Field label={tr('وجہ', 'Reason', 'السبب')}><input value={m.reason} onChange={(e) => upd({ reason: e.target.value })} /></Field>
               {a && <span className={`chip t-${a.type}`}>{dayName(a.type)}</span>}
               <button className="ghost sm" onClick={() => set({ moves: cfg.moves!.filter((_, j) => j !== i) })}>{tr('ہٹائیں', 'Remove', 'إزالة')}</button>
@@ -365,8 +366,8 @@ function RangeRows({ rows, onChange }: { rows: Range[]; onChange: (r: Range[]) =
     <div className="table-wrap"><table className="tbl"><thead><tr><th>{tr('سے', 'From')}</th><th>{tr('تک', 'To')}</th><th>{tr('وجہ', 'Reason')}</th><th /></tr></thead>
       <tbody>{rows.map((r, i) => (
         <tr key={i}>
-          <td><input type="date" value={r.from} onChange={(e) => up(i, { from: e.target.value, to: r.to < e.target.value ? e.target.value : r.to })} /></td>
-          <td><input type="date" value={r.to} onChange={(e) => up(i, { to: e.target.value })} /></td>
+          <td><DateInput value={r.from} onChange={(e) => up(i, { from: e.target.value, to: r.to < e.target.value ? e.target.value : r.to })} /></td>
+          <td><DateInput value={r.to} onChange={(e) => up(i, { to: e.target.value })} /></td>
           <td><input value={r.reason} onChange={(e) => up(i, { reason: e.target.value })} /></td>
           <td><button className="ghost sm" onClick={() => onChange(rows.filter((_, j) => j !== i))}>✕</button></td>
         </tr>
@@ -379,7 +380,7 @@ function PinRows({ rows, onChange }: { rows: Pin[]; onChange: (r: Pin[]) => void
   return (
     <div className="table-wrap"><table className="tbl"><tbody>{rows.map((r, i) => (
       <tr key={i}>
-        <td><input type="date" value={r.date} onChange={(e) => up(i, { date: e.target.value })} /></td>
+        <td><DateInput value={r.date} onChange={(e) => up(i, { date: e.target.value })} /></td>
         <td><Select value={r.type} onChange={(v) => up(i, { type: v as Pin['type'] })} options={[{ v: 'parents', t: dayName('parents') }, { v: 'fuzala', t: dayName('fuzala') }, { v: 'event', t: dayName('event') }]} /></td>
         <td><input value={r.label ?? ''} placeholder={tr('نام (اختیاری)', 'Name (optional)', 'الاسم (اختياري)')} onChange={(e) => up(i, { label: e.target.value })} /></td>
         <td><button className="ghost sm" onClick={() => onChange(rows.filter((_, j) => j !== i))}>✕</button></td>

@@ -1,3 +1,4 @@
+import { DateInput } from '../DateInput'
 import { useState } from 'react'
 import { all, get, insert, session, today, type Row } from '../db/db'
 import { myClasses, findFamiliesByPhone, loadSettings, waNumber, logMessage } from '../db/repo'
@@ -17,9 +18,9 @@ export function Hadiya() {
   return (
     <div className="stack">
       <div className="row between wrap">
-        <h1>{tr('ہدیہ (فیس)', 'Hadiya (fees)', 'الهدية (الرسوم)')}</h1>
+        <h1>{tr('فیس', 'Fees', 'الرسوم')}</h1>
         {!headOnly && <div className="row wrap">
-          {([['chart', tr('ماہانہ چارٹ', 'Monthly chart', 'الجدول الشهري')], ['pay', tr('وصولی', 'Receive payment', 'استلام')], ['fees', tr('ہدیہ کی مقدار', 'Fee amounts', 'مقدار الرسوم')], ['receipts', tr('رسیدیں', 'Receipts', 'الإيصالات')], ['fund', tr('مٹھی فنڈ', 'Mutthi fund', 'صندوق القبضة')]] as const).map(([k, t]) => (
+          {([['chart', tr('ماہانہ چارٹ', 'Monthly chart', 'الجدول الشهري')], ['pay', tr('وصولی', 'Receive payment', 'استلام')], ['fees', tr('فیس کی مقدار', 'Fee amounts', 'مقدار الرسوم')], ['receipts', tr('رسیدیں', 'Receipts', 'الإيصالات')], ['fund', tr('مٹھی فنڈ', 'Mutthi fund', 'صندوق القبضة')]] as const).map(([k, t]) => (
             <button key={k} className={tab === k ? 'primary' : 'ghost'} onClick={() => setTab(k)}>{t}</button>
           ))}
         </div>}
@@ -119,7 +120,7 @@ function Payment() {
           <Card title={`${fam.guardian_name} · ${tr('بچے', 'Children')}: ${data.rows.map((r) => r.s.name).join('، ')}`}>
             <div className="muted">{tr('باقی', 'Outstanding', 'المتبقي')}: <Num>{rs(data.rows.reduce((a, r) => a + Math.max(0, r.balance), 0))}</Num> ({tr('اس ماہ تک', 'up to this month', 'حتى هذا الشهر')})</div>
             <div className="row wrap">
-              <button className={kind === 'fee' ? 'primary' : 'ghost'} onClick={() => setKind('fee')}>{tr('ماہانہ ہدیہ', 'Monthly hadiya', 'الهدية الشهرية')}</button>
+              <button className={kind === 'fee' ? 'primary' : 'ghost'} onClick={() => setKind('fee')}>{tr('ماہانہ فیس', 'Monthly fee', 'الرسوم الشهرية')}</button>
               <button className={kind === 'admission' ? 'primary' : 'ghost'} onClick={() => setKind('admission')}>{tr('داخلہ (ایک بار)', 'Admission (one-off)', 'القبول (مرة واحدة)')}</button>
             </div>
             {kind === 'fee' ? (
@@ -136,7 +137,7 @@ function Payment() {
           <div className="grid2">
             <Field label={tr('ادا کرنے والا', 'Paid by', 'الدافع')}><input value={payer} onChange={(e) => setPayer(e.target.value)} /></Field>
             <Field label={tr('وصول کنندہ (معلم، ناظم یا مہتمم)', 'Collected by (teacher, nazim or muhtamim)', 'المستلم')}><input value={collector} placeholder={me?.name} onChange={(e) => setCollector(e.target.value)} /></Field>
-            <Field label={tr('تاریخ', 'Date')}><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
+            <Field label={tr('تاریخ', 'Date')}><DateInput value={date} onChange={(e) => setDate(e.target.value)} /></Field>
             <Field label={tr('نوٹ', 'Note')}><input value={note} onChange={(e) => setNote(e.target.value)} /></Field>
           </div>
           <label className="check"><input type="checkbox" checked={sponsor} onChange={(e) => setSponsor(e.target.checked)} />{tr('اہلِ خیر (کفیل) کی طرف سے', 'Paid by a sponsor (ahl-e-khair)', 'من كفيل')}</label>
@@ -180,7 +181,7 @@ function Fees() {
     <>
       <Select value={classId} onChange={setClassId} options={(classes ?? []).map((c) => ({ v: c.id, t: c.name }))} />
       {data && <div className="table-wrap"><table className="tbl">
-        <thead><tr><th>{tr('نام', 'Name')}</th><th>{tr('ماہانہ ہدیہ', 'Monthly hadiya', 'الهدية الشهرية')}</th><th>{tr('کب سے', 'From', 'من')}</th><th>{tr('کیفیت', 'Status')}</th><th /></tr></thead>
+        <thead><tr><th>{tr('نام', 'Name')}</th><th>{tr('ماہانہ فیس', 'Monthly fee', 'الرسوم الشهرية')}</th><th>{tr('کب سے', 'From', 'من')}</th><th>{tr('کیفیت', 'Status')}</th><th /></tr></thead>
         <tbody>{data.studs.map((s) => {
           const p = data.plans.find((x) => x.student_id === s.id)
           return <tr key={s.id}><td>{s.name}</td><td><Num>{rs(p?.amount ?? def)}</Num></td><td><Num>{p ? mLabel(p.from_month) : '—'}</Num></td>
@@ -191,7 +192,7 @@ function Fees() {
       {edit && (
         <div className="overlay" onClick={() => setEdit(null)}><div className="dialog" onClick={(e) => e.stopPropagation()}>
           <h3>{edit.s.name}</h3>
-          <Field label={tr('ماہانہ ہدیہ', 'Monthly hadiya', 'الهدية الشهرية')}><input type="number" dir="ltr" value={edit.amount} onChange={(e) => setEdit({ ...edit, amount: e.target.value })} /></Field>
+          <Field label={tr('ماہانہ فیس', 'Monthly fee', 'الرسوم الشهرية')}><input type="number" dir="ltr" value={edit.amount} onChange={(e) => setEdit({ ...edit, amount: e.target.value })} /></Field>
           <Field label={tr('کس مہینے سے', 'From month', 'من شهر')}><input type="month" value={edit.from} onChange={(e) => setEdit({ ...edit, from: e.target.value })} /></Field>
           <label className="check"><input type="checkbox" checked={edit.exempt} onChange={(e) => setEdit({ ...edit, exempt: e.target.checked })} />{tr('معاف (ادائیگی کی استطاعت نہیں)', 'Exempt (cannot pay)', 'معفى')}</label>
           <Field label={tr('کفیل (اہلِ خیر) کا نام', 'Sponsor name (ahl-e-khair)', 'اسم الكفيل')}><input value={edit.sponsor} onChange={(e) => setEdit({ ...edit, sponsor: e.target.value })} /></Field>
@@ -227,7 +228,7 @@ function Fund() {
     <div className="stack">
       <div className="row wrap">
         <input type="number" dir="ltr" placeholder={tr('رقم', 'Amount', 'المبلغ')} value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} />
-        <input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
+        <DateInput value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
         <input placeholder={tr('نوٹ', 'Note')} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
         <button className="primary" disabled={!Number(f.amount)} onClick={async () => { await insert('fund_entry', { kind: 'mutthi', amount: Number(f.amount), date: f.date, note: f.note }); setF({ amount: '', date: today(), note: '' }); d.toast(tr('محفوظ', 'Saved')) }}>{tr('درج کریں', 'Add', 'إضافة')}</button>
       </div>
@@ -242,7 +243,7 @@ function HeadOfficeTotals() {
   return (
     <Card title={tr('مکاتب کے کل (تفصیل مکتب کی اجازت سے)', 'Branch totals (details only if the branch allows)', 'مجاميع المكاتب')}>
       {rows?.length ? <table className="tbl"><tbody>{rows.map((r, i) => <tr key={i}><td>{r.name}</td><td><Num>{rs(r.total ?? 0)}</Num></td><td><Num>{r.n}</Num> {tr('رسیدیں', 'receipts', 'إيصالات')}</td></tr>)}</tbody></table> : <Empty>{tr('ابھی کچھ نہیں', 'Nothing yet', 'لا شيء')}</Empty>}
-      <p className="hint">{tr('تفصیل دیکھنے کے لیے مکتب اپنی ترتیبات میں «ہیڈ آفس کو ہدیہ کی تفصیل دکھائیں» آن کرے۔', 'To see details, the branch turns on “Show hadiya details to head office” in its Settings.', 'لعرض التفاصيل يفعّل الفرع «إظهار تفاصيل الهدية للمكتب الرئيسي» في إعداداته.')}</p>
+      <p className="hint">{tr('تفصیل دیکھنے کے لیے مکتب اپنی ترتیبات میں «ہیڈ آفس کو فیس کی تفصیل دکھائیں» آن کرے۔', 'To see details, the branch turns on “Show fee details to head office” in its Settings.', 'لعرض التفاصيل يفعّل الفرع «إظهار تفاصيل الرسوم للمكتب الرئيسي» في إعداداته.')}</p>
     </Card>
   )
 }
