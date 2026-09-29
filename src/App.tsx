@@ -18,7 +18,7 @@ import { ActivityLog } from './screens/Activity'
 import { AuthGate, type Auth } from './screens/Login'
 import { syncConfigured, isLocalOnly, setLocalOnly, onSyncState, syncState, pendingApproval, isPlatformOwner, signOut, type SyncState } from './sync'
 import { OrgRequests } from './screens/Requests'
-import { checkForUpdate, DOWNLOAD_URL, APP_VERSION } from './update'
+import { checkForUpdate, DOWNLOAD_URL, APP_VERSION, shareApp } from './update'
 import { RangeReport, PerfectList, TeacherReport, GuardianSummary, AuditView } from './screens/Reports'
 
 type Nav = { to: string; ur: string; en: string; roles: string[] }
@@ -184,6 +184,7 @@ function Shell({ org, user, auth, onSwitch, onRefresh }: { org: Row; user: Row; 
             )}
             <label className="field"><span className="flabel">{tr('زبان', 'Language')}</span><LangSelect onChange={onRefresh} /></label>
             {auth && <div className="hint" dir="ltr">{auth.email}</div>}
+            <button className="ghost" onClick={() => { setMenu(false); shareApp() }}>📤 {tr('ایپ شیئر کریں', 'Share the app', 'شارك التطبيق')}</button>
             <div className="hint" dir="ltr">v{APP_VERSION}</div>
             <button className="ghost" onClick={onSwitch}>{auth ? tr('سائن آؤٹ', 'Sign out') : tr('صارف تبدیل کریں', 'Switch user')}</button>
             {!auth && syncConfigured && isLocalOnly() && user.role === 'admin' && (

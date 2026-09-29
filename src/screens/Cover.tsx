@@ -1,5 +1,7 @@
 // Home header: app title, the eight main parts as tiles, and who is using the app.
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { shareApp } from '../update'
 import { get, session, type Row } from '../db/db'
 import { tr, useQuery, label, ROLES, appName } from '../ui'
 
@@ -18,6 +20,7 @@ const TILES: { to: string; ur: string; en: string; ar: string; icon: string }[] 
 
 export function Cover({ user }: { user: Row }) {
   const branch = useQuery(() => (session.branchId ? get('branch', session.branchId) : Promise.resolve(null)), [session.branchId])
+  const [note, setNote] = useState('')
   const org = useQuery(() => get('organization', session.orgId), [])
   return (
     <div className="cover">
@@ -32,6 +35,13 @@ export function Cover({ user }: { user: Row }) {
             <span>{tr(t.ur, t.en, t.ar)}</span>
           </Link>
         ))}
+      </div>
+      <div className="cover-share">
+        <button className="btn share" onClick={async () => { const r = await shareApp(); if (r !== 'shared') { setNote(r); setTimeout(() => setNote(''), 3000) } }}>
+          <span aria-hidden>📤</span> {tr('ایپ شیئر کریں', 'Share the app', 'شارك التطبيق')}
+        </button>
+        {note === 'copied' && <div className="hint">{tr('لنک کاپی ہو گیا، اب کہیں بھی چسپاں کریں۔', 'Link copied — paste it anywhere.', 'تم نسخ الرابط، الصقه حيث تشاء.')}</div>}
+        {note === 'failed' && <div className="hint">{tr('شیئر نہیں ہو سکا۔', 'Could not share.', 'تعذرت المشاركة.')}</div>}
       </div>
       <div className="cover-who">{user.name} · {label(ROLES, user.role)}</div>
     </div>

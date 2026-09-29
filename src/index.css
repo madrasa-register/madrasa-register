@@ -13,7 +13,7 @@
   --gold-soft: #f6ead0;
   --cover: #0f6e66;
   --cover-2: #0b5a53;
-  --s1: #0f6e66; --s2: #c9973b; --s3: #3b7ea1; --s4: #7a5c99; --s5: #4f8a3c; --s6: #b0543f; --s7: #2f5d8a; --s8: #8a6d2f;
+  --s1: #0f6e66; --s2: #c9973b; --s3: #3b7ea1; --s4: #7a5c99; --s5: #4f8a3c; --s6: #b0543f; --s7: #2f5d8a; --s8: #8a6d2f; --s9: #a0456e;
   --ok: #1f7a4d; --ok-soft: #dff1e7;
   --warn: #9a6200; --warn-soft: #fbefd6;
   --err: #b3261e; --err-soft: #fbe3e1;
@@ -356,3 +356,6 @@ details summary { cursor: pointer; margin: 6px 0; }
 .dp-wd { font-size: 0.68em; color: var(--muted); }
 .dp-d { min-height: 34px; padding: 0; justify-content: center; font-family: var(--lat); border-color: transparent; }
 .dp-d.on { background: var(--brand); color: var(--brand-ink); }
+
+.cover-share { text-align: center; padding: 4px 12px 10px; }
+.btn.share { background: var(--gold); color: #fff; border-color: var(--gold); font-weight: 600; padding: 8px 18px; border-radius: 999px; }
